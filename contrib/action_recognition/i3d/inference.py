@@ -19,18 +19,14 @@ from test import load_model
 
 def load_image(frame_file):
     try:
-        img = Image.open(frame_file).convert('RGB')
-        return img
+        return Image.open(frame_file).convert('RGB')
     except:
-        print("Couldn't load image:{}".format(frame_file))
+        print(f"Couldn't load image:{frame_file}")
         return None
 
 
 def load_frames(frame_paths):
-    frame_list = []
-    for frame in frame_paths:
-        frame_list.append(load_image(frame))
-    return frame_list
+    return [load_image(frame) for frame in frame_paths]
 
 
 def construct_input(frame_list):
@@ -71,9 +67,7 @@ def predict_over_video(video_frame_list, window_width=9, stride=1):
 
     with torch.no_grad():
 
-        window_count = 0
-
-        for i in range(stride+window_width-1, len(video_frame_list), stride):
+        for window_count, i in enumerate(range(stride+window_width-1, len(video_frame_list), stride)):
             window_frame_list = [video_frame_list[j] for j in range(i-window_width, i)]
             frames = load_frames(window_frame_list)
             batch = construct_input(frames)
@@ -85,7 +79,6 @@ def predict_over_video(video_frame_list, window_width=9, stride=1):
                 window_top_pred.indices.cpu().numpy()[0],
                 window_top_pred.values.cpu().numpy()[0])
             ))
-            window_count += 1
 
 
 

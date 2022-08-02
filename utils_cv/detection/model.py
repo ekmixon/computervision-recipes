@@ -128,7 +128,7 @@ def _get_pretrained_rcnn(
     Returns
         The pre-trained model
     """
-    model = model_func(
+    return model_func(
         pretrained=True,
         min_size=min_size,
         max_size=max_size,
@@ -141,7 +141,6 @@ def _get_pretrained_rcnn(
         box_nms_thresh=box_nms_thresh,
         box_detections_per_img=box_detections_per_img,
     )
-    return model
 
 
 def _tune_box_predictor(model: nn.Module, num_classes: int) -> nn.Module:
@@ -302,11 +301,7 @@ def _im_eval_detections(
     correct_dets = [False] * len(det_bboxes)
 
     # Check if any object was detected in an image
-    if len(det_bboxes) == 0:
-        if len(gt_bboxes) > 0:
-            im_missed_gt = True
-
-    else:
+    if det_bboxes:
         # loop over ground truth objects and all detections for a given image
         for gt_index, gt_bbox in enumerate(gt_bboxes):
             gt_label = gt_bbox.label_name
@@ -323,8 +318,11 @@ def _im_eval_detections(
 
         # Check if image has at least one wrong detection, or at least one missing ground truth
         im_wrong_det = min(correct_dets) == 0
-        if len(gt_bboxes) > 0 and min(found_gts) == 0:
+        if gt_bboxes and min(found_gts) == 0:
             im_missed_gt = True
+
+    elif gt_bboxes:
+        im_missed_gt = True
 
     # Count
     obj_missed_gt = len(found_gts) - np.sum(found_gts)
@@ -481,9 +479,7 @@ class DetectionLearner:
         if attr in self.__dict__:
             return self.__dict__[attr]
         raise AttributeError(
-            "'{}' object has no attribute '{}'".format(
-                type(self).__name__, attr
-            )
+            f"'{type(self).__name__}' object has no attribute '{attr}'"
         )
 
     def fit(
@@ -561,7 +557,7 @@ class DetectionLearner:
             ax1 = fig.add_subplot(1, len(ap), i + 1)
 
             ax1.set_xlim([0, self.epochs - 1])
-            ax1.set_xticks(range(0, self.epochs))
+            ax1.set_xticks(range(self.epochs))
             ax1.set_xlabel("epochs")
             ax1.set_ylabel("loss", color="g")
             ax1.plot(self.losses, "g-")
@@ -656,7 +652,7 @@ class DetectionLearner:
 
         model = self.model.eval()
 
-        for i, batch in enumerate(dl):
+        for batch in dl:
             ims, infos = batch
             ims = [im.to(self.device) for im in ims]
             with torch.no_grad():
@@ -721,8 +717,8 @@ class DetectionLearner:
         os.mkdir(model_path)
 
         # set names
-        pt_path = model_path / f"model.pt"
-        meta_path = model_path / f"meta.json"
+        pt_path = model_path / "model.pt"
+        meta_path = model_path / "meta.json"
 
         # save pt
         torch.save(self.model.state_dict(), pt_path)
@@ -753,7 +749,6 @@ class DetectionLearner:
             Exception if passed in name/path is invalid and doesn't exist
         """
 
-        # set path
         if not path:
             if self.dataset:
                 path = Path(self.dataset.root) / "models"
@@ -776,12 +771,10 @@ class DetectionLearner:
                     f"No model file named meta.txt exists in {model_path}"
                 )
 
-        # if no name is given, we assume there is only one model, otherwise we
-        # throw an error
         else:
             models = [f.path for f in os.scandir(path) if f.is_dir()]
 
-            if len(models) == 0:
+            if not models:
                 raise Exception(f"No model found in {path}.")
             elif len(models) > 1:
                 print(

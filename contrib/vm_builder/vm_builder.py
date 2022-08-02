@@ -154,13 +154,12 @@ def validate_vm_name(vm_name) -> bool:
 
 
 def check_valid_yes_no_response(input: str) -> bool:
-    if input in ("Y", "y", "N", "n"):
+    if input in {"Y", "y", "N", "n"}:
         return True
-    else:
-        print_formatted_text(
-            HTML("<ansired>Enter 'y' or 'n'. Please try again.</ansired>")
-        )
-        return False
+    print_formatted_text(
+        HTML("<ansired>Enter 'y' or 'n'. Please try again.</ansired>")
+    )
+    return False
 
 
 def yes_no_prompter(msg: str) -> bool:
@@ -169,7 +168,7 @@ def yes_no_prompter(msg: str) -> bool:
     while not valid_response:
         cond = prompt(msg)
         valid_response = check_valid_yes_no_response(cond)
-    return True if cond in ("Y", "y") else False
+    return cond in ("Y", "y")
 
 
 def prompt_subscription_id() -> str:
@@ -203,9 +202,7 @@ def prompt_vm_name() -> str:
     vm_name = None
     vm_name_is_valid = False
     while not vm_name_is_valid:
-        vm_name = prompt(
-            f"Enter a name for your vm (ex. 'cv-datascience-vm'): "
-        )
+        vm_name = prompt("Enter a name for your vm (ex. 'cv-datascience-vm'): ")
         vm_name_is_valid = validate_vm_name(vm_name)
     return vm_name
 
@@ -219,7 +216,7 @@ def prompt_region() -> str:
     )
     valid_regions = results.stdout.decode("utf-8").strip().split("\n")
     while not region_is_valid:
-        region = prompt(f"Enter a region for your vm (ex. 'eastus'): ")
+        region = prompt("Enter a region for your vm (ex. 'eastus'): ")
         if region in valid_regions:
             region_is_valid = True
         else:
@@ -383,7 +380,7 @@ def check_logged_in() -> bool:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    return False if "az login" in str(results.stderr) else True
+    return "az login" not in str(results.stderr)
 
 
 def log_in(logged_in: bool):

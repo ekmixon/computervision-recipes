@@ -246,13 +246,13 @@ def run(*options, cfg=None):
 
     # Data-parallel
     devices_lst = list(range(torch.cuda.device_count()))
-    print("Devices {}".format(devices_lst))
+    print(f"Devices {devices_lst}")
     if len(devices_lst) > 1:
         i3d_model = torch.nn.DataParallel(i3d_model)
 
     if not os.path.exists(config.MODEL.CHECKPOINT_DIR):
         os.makedirs(config.MODEL.CHECKPOINT_DIR)
-    
+
     for epoch in range(config.TRAIN.MAX_EPOCHS):
 
         train(train_loader,
@@ -268,8 +268,9 @@ def run(*options, cfg=None):
             scheduler.step(val_loss)
             torch.save(
                 i3d_model.module.state_dict(),
-                config.MODEL.CHECKPOINT_DIR+'/'+config.MODEL.NAME+'_split'+str(config.DATASET.SPLIT)+'_epoch'+str(epoch).zfill(3)+'.pt'
+                f'{config.MODEL.CHECKPOINT_DIR}/{config.MODEL.NAME}_split{str(config.DATASET.SPLIT)}_epoch{str(epoch).zfill(3)}.pt',
             )
+
 
     writer.close()
 

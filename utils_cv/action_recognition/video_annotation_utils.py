@@ -90,8 +90,7 @@ def create_clip_file_name(row, clip_file_format="mp4"):
     # video_file = ast.literal_eval(row.file_list)[0]
     video_file = os.path.splitext(row["file_list"])[0]
     clip_id = row["# CSV_HEADER = metadata_id"]
-    clip_file = "{}_{}.{}".format(video_file, clip_id, clip_file_format)
-    return clip_file
+    return f"{video_file}_{clip_id}.{clip_file_format}"
 
 
 def get_clip_action_label(row):
@@ -198,9 +197,7 @@ def extract_clip(row, video_dir, clip_dir, ffmpeg_path=None):
         return
 
     if not os.path.exists(video_path):
-        raise ValueError(
-            "The video path '{}' is not valid.".format(video_path)
-        )
+        raise ValueError(f"The video path '{video_path}' is not valid.")
 
     # ffmpeg -ss 9.222 -i youtube.mp4 -t 0.688 tmp.mp4 -codec copy -y
     _extract_clip_ffmpeg(
@@ -249,11 +246,10 @@ def check_interval_overlaps(clip_start, clip_end, interval_list):
     return: Boolean
         True if the clip overlaps any of the intervals in interval list.
     """
-    overlapping = False
-    for interval in interval_list:
-        if (clip_start < interval[1]) and (clip_end > interval[0]):
-            overlapping = True
-    return overlapping
+    return any(
+        (clip_start < interval[1]) and (clip_end > interval[0])
+        for interval in interval_list
+    )
 
 
 def _merge_temporal_interval(temporal_interval_list):
@@ -328,8 +324,7 @@ def _split_interval(
         interval_start_list = interval_start_list[:-1]
         interval_end_list = interval_end_list[:-1]
 
-    res = list(zip(list(interval_start_list), list(interval_end_list)))
-    return res
+    return list(zip(list(interval_start_list), list(interval_end_list)))
 
 
 def _split_interval_list(
@@ -432,16 +427,14 @@ def extract_contiguous_negative_clips(
     else:
         raise Exception("There is no temporal information in the csv.")
 
-    if not all(
-        len(temporal_interval) % 2 == 0
+    if any(
+        len(temporal_interval) % 2 != 0
         for temporal_interval in temporal_interval_list
     ):
         raise ValueError(
-            "There is at least one time interval "
-            "in {} having only one end point.".format(
-                str(temporal_interval_list)
-            )
+            f"There is at least one time interval in {str(temporal_interval_list)} having only one end point."
         )
+
 
     temporal_interval_list = _merge_temporal_interval(temporal_interval_list)
     negative_sample_interval_list = (
@@ -535,9 +528,11 @@ def extract_sampled_negative_clips(
     return: None
     """
     # find video lengths
-    video_len = {}
-    for video in video_files:
-        video_len[video] = get_video_length(os.path.join(video_dir, video))
+    video_len = {
+        video: get_video_length(os.path.join(video_dir, video))
+        for video in video_files
+    }
+
     positive_intervals = defaultdict(list)
     # get temporal interval of positive samples
     for index, row in video_info_df.iterrows():
@@ -560,7 +555,7 @@ def extract_sampled_negative_clips(
         if clip_end > duration:
             continue
         # check to ensure negative clip doesn't overlap a positive clip or pick another file
-        if negative_sample_file in positive_intervals.keys():
+        if negative_sample_file in positive_intervals:
             clip_positive_intervals = positive_intervals[negative_sample_file]
             if check_interval_overlaps(
                 clip_start, clip_end, clip_positive_intervals

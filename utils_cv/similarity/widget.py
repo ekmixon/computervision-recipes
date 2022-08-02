@@ -80,11 +80,7 @@ class RetrievalWidget(object):
                 w_button.value = str(img_index)
                 w_button.tooltip = f"Rank {i} ({distance:.2f}), image index: {img_index}"
 
-                if i == 0:
-                    w_button.description = "Query"
-                else:
-                    w_button.description = f"Rank {i} ({distance:.2f})"
-                
+                w_button.description = "Query" if i == 0 else f"Rank {i} ({distance:.2f})"
             else:
                 w_img.layout.visibility = "hidden"
                 w_button.layout.visibility = "hidden"
@@ -113,10 +109,7 @@ class RetrievalWidget(object):
             # Initialize buttons
             w_button = widgets.Button(description="", value=i)
             w_button.on_click(button_pressed)
-            if i == 0:
-                w_button.button_style = "primary"
-            else:
-                w_button.button_style = "warning"
+            w_button.button_style = "primary" if i == 0 else "warning"
             self.w_buttons.append(w_button)
 
             # combine into image+button widget

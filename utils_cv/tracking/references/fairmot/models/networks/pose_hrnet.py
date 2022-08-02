@@ -117,20 +117,19 @@ class HighResolutionModule(nn.Module):
     def _check_branches(self, num_branches, blocks, num_blocks,
                         num_inchannels, num_channels):
         if num_branches != len(num_blocks):
-            error_msg = 'NUM_BRANCHES({}) <> NUM_BLOCKS({})'.format(
-                num_branches, len(num_blocks))
+            error_msg = f'NUM_BRANCHES({num_branches}) <> NUM_BLOCKS({len(num_blocks)})'
             logger.error(error_msg)
             raise ValueError(error_msg)
 
         if num_branches != len(num_channels):
-            error_msg = 'NUM_BRANCHES({}) <> NUM_CHANNELS({})'.format(
-                num_branches, len(num_channels))
+            error_msg = f'NUM_BRANCHES({num_branches}) <> NUM_CHANNELS({len(num_channels)})'
+
             logger.error(error_msg)
             raise ValueError(error_msg)
 
         if num_branches != len(num_inchannels):
-            error_msg = 'NUM_BRANCHES({}) <> NUM_INCHANNELS({})'.format(
-                num_branches, len(num_inchannels))
+            error_msg = f'NUM_BRANCHES({num_branches}) <> NUM_INCHANNELS({len(num_inchannels)})'
+
             logger.error(error_msg)
             raise ValueError(error_msg)
 
@@ -138,7 +137,7 @@ class HighResolutionModule(nn.Module):
                          stride=1):
         downsample = None
         if stride != 1 or \
-           self.num_inchannels[branch_index] != num_channels[branch_index] * block.expansion:
+               self.num_inchannels[branch_index] != num_channels[branch_index] * block.expansion:
             downsample = nn.Sequential(
                 nn.Conv2d(
                     self.num_inchannels[branch_index],
@@ -151,34 +150,30 @@ class HighResolutionModule(nn.Module):
                 ),
             )
 
-        layers = []
-        layers.append(
+        layers = [
             block(
                 self.num_inchannels[branch_index],
                 num_channels[branch_index],
                 stride,
-                downsample
+                downsample,
             )
-        )
+        ]
+
         self.num_inchannels[branch_index] = \
-            num_channels[branch_index] * block.expansion
-        for i in range(1, num_blocks[branch_index]):
-            layers.append(
-                block(
-                    self.num_inchannels[branch_index],
-                    num_channels[branch_index]
-                )
-            )
+                num_channels[branch_index] * block.expansion
+        layers.extend(
+            block(self.num_inchannels[branch_index], num_channels[branch_index])
+            for _ in range(1, num_blocks[branch_index])
+        )
 
         return nn.Sequential(*layers)
 
     def _make_branches(self, num_branches, block, num_blocks, num_channels):
-        branches = []
+        branches = [
+            self._make_one_branch(i, block, num_blocks, num_channels)
+            for i in range(num_branches)
+        ]
 
-        for i in range(num_branches):
-            branches.append(
-                self._make_one_branch(i, block, num_blocks, num_channels)
-            )
 
         return nn.ModuleList(branches)
 
@@ -226,14 +221,18 @@ class HighResolutionModule(nn.Module):
                             conv3x3s.append(
                                 nn.Sequential(
                                     nn.Conv2d(
-                                        num_inchannels[j],
                                         num_outchannels_conv3x3,
-                                        3, 2, 1, bias=False
+                                        num_outchannels_conv3x3,
+                                        3,
+                                        2,
+                                        1,
+                                        bias=False,
                                     ),
                                     nn.BatchNorm2d(num_outchannels_conv3x3),
-                                    nn.ReLU(True)
+                                    nn.ReLU(True),
                                 )
                             )
+
                     fuse_layer.append(nn.Sequential(*conv3x3s))
             fuse_layers.append(nn.ModuleList(fuse_layer))
 
@@ -254,10 +253,7 @@ class HighResolutionModule(nn.Module):
         for i in range(len(self.fuse_layers)):
             y = x[0] if i == 0 else self.fuse_layers[i][0](x[0])
             for j in range(1, self.num_branches):
-                if i == j:
-                    y = y + x[j]
-                else:
-                    y = y + self.fuse_layers[i][j](x[j])
+                y = y + x[j] if i == j else y + self.fuse_layers[i][j](x[j])
             x_fuse.append(self.relu(y))
 
         return x_fuse
@@ -320,7 +316,11 @@ class PoseHighResolutionNet(nn.Module):
 
         logger.info('=> init weights from normal distribution')
         for m in self.modules():
-            if isinstance(m, nn.Conv2d):
+            if (
+                isinstance(m, nn.Conv2d)
+                or not isinstance(m, nn.BatchNorm2d)
+                and isinstance(m, nn.ConvTranspose2d)
+            ):
                 # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 nn.init.normal_(m.weight, std=0.001)
                 for name, _ in m.named_parameters():
@@ -329,12 +329,6 @@ class PoseHighResolutionNet(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.ConvTranspose2d):
-                nn.init.normal_(m.weight, std=0.001)
-                for name, _ in m.named_parameters():
-                    if name in ['bias']:
-                        nn.init.constant_(m.bias, 0)
-
         self.heads = heads
 
         last_inp_channels = np.int(np.sum(pre_stage_channels))
@@ -394,7 +388,7 @@ class PoseHighResolutionNet(nn.Module):
                 for j in range(i+1-num_branches_pre):
                     inchannels = num_channels_pre_layer[-1]
                     outchannels = num_channels_cur_layer[i] \
-                        if j == i-num_branches_pre else inchannels
+                            if j == i-num_branches_pre else inchannels
                     conv3x3s.append(
                         nn.Sequential(
                             nn.Conv2d(
@@ -419,12 +413,9 @@ class PoseHighResolutionNet(nn.Module):
                 nn.BatchNorm2d(planes * block.expansion, momentum=BN_MOMENTUM),
             )
 
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
+        layers = [block(self.inplanes, planes, stride, downsample)]
         self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes))
-
+        layers.extend(block(self.inplanes, planes) for _ in range(1, blocks))
         return nn.Sequential(*layers)
 
     def _make_stage(self, layer_config, num_inchannels,
@@ -439,11 +430,7 @@ class PoseHighResolutionNet(nn.Module):
         modules = []
         for i in range(num_modules):
             # multi_scale_output is only used last module
-            if not multi_scale_output and i == num_modules - 1:
-                reset_multi_scale_output = False
-            else:
-                reset_multi_scale_output = True
-
+            reset_multi_scale_output = bool(multi_scale_output or i != num_modules - 1)
             modules.append(
                 HighResolutionModule(
                     num_branches,
@@ -478,24 +465,22 @@ class PoseHighResolutionNet(nn.Module):
 
         x_list = []
         for i in range(self.stage3_cfg['NUM_BRANCHES']):
-            if self.transition2[i] is not None:
-                if i < self.stage2_cfg['NUM_BRANCHES']:
-                    x_list.append(self.transition2[i](y_list[i]))
-                else:
-                    x_list.append(self.transition2[i](y_list[-1]))
-            else:
+            if self.transition2[i] is None:
                 x_list.append(y_list[i])
+            elif i < self.stage2_cfg['NUM_BRANCHES']:
+                x_list.append(self.transition2[i](y_list[i]))
+            else:
+                x_list.append(self.transition2[i](y_list[-1]))
         y_list = self.stage3(x_list)
 
         x_list = []
         for i in range(self.stage4_cfg['NUM_BRANCHES']):
-            if self.transition3[i] is not None:
-                if i < self.stage3_cfg['NUM_BRANCHES']:
-                    x_list.append(self.transition3[i](y_list[i]))
-                else:
-                    x_list.append(self.transition3[i](y_list[-1]))
-            else:
+            if self.transition3[i] is None:
                 x_list.append(y_list[i])
+            elif i < self.stage3_cfg['NUM_BRANCHES']:
+                x_list.append(self.transition3[i](y_list[i]))
+            else:
+                x_list.append(self.transition3[i](y_list[-1]))
         x = self.stage4(x_list)
 
         # Upsampling
@@ -508,39 +493,36 @@ class PoseHighResolutionNet(nn.Module):
 
         x = self.last_layer(x)
 
-        z = {}
-        for head in self.heads:
-            z[head] = self.__getattr__(head)(x)
+        z = {head: self.__getattr__(head)(x) for head in self.heads}
         return [z]
 
     def init_weights(self, pretrained=''):
         if os.path.isfile(pretrained):
             pretrained_state_dict = torch.load(pretrained)
-            logger.info('=> loading pretrained model {}'.format(pretrained))
+            logger.info(f'=> loading pretrained model {pretrained}')
 
-            need_init_state_dict = {}
-            for name, m in pretrained_state_dict.items():
-                if name.split('.')[0] in self.pretrained_layers \
-                   or self.pretrained_layers[0] == '*':
-                    need_init_state_dict[name] = m
+            need_init_state_dict = {
+                name: m
+                for name, m in pretrained_state_dict.items()
+                if name.split('.')[0] in self.pretrained_layers
+                or self.pretrained_layers[0] == '*'
+            }
+
             self.load_state_dict(need_init_state_dict, strict=False)
         elif pretrained:
             logger.error('=> please download pre-trained models first!')
-            raise ValueError('{} is not exist!'.format(pretrained))
+            raise ValueError(f'{pretrained} is not exist!')
 
 
 def fill_fc_weights(layers):
     for m in layers.modules():
-        if isinstance(m, nn.Conv2d):
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
+        if isinstance(m, nn.Conv2d) and m.bias is not None:
+            nn.init.constant_(m.bias, 0)
 
 
 def get_pose_net(num_layers, heads, head_conv):
     if num_layers == 32:
         cfg_dir = '../src/lib/models/networks/config/hrnet_w32.yaml'
-    elif num_layers == 18:
-        cfg_dir = '../src/lib/models/networks/config/hrnet_w18.yaml'
     else:
         cfg_dir = '../src/lib/models/networks/config/hrnet_w18.yaml'
     update_config(cfg, cfg_dir)

@@ -31,8 +31,7 @@ def score():
     result = model.score(request.data, return_image=False, img_dim=1750)
 
     js = json.dumps({"count": int(np.round(result["pred"]))})
-    resp = Response(js, status=200, mimetype="application/json")
-    return resp
+    return Response(js, status=200, mimetype="application/json")
 
 
 if __name__ == "__main__":

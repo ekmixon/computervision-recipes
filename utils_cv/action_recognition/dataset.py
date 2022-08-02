@@ -67,9 +67,7 @@ class VideoRecord(object):
     @property
     def num_frames(self) -> int:
         if self._num_frames is None:
-            self._num_frames = int(
-                len([x for x in Path(self._data[0]).glob("img_*")]) - 1
-            )
+            self._num_frames = int(len(list(Path(self._data[0]).glob("img_*"))) - 1)
         return self._num_frames
 
     @property
@@ -140,7 +138,7 @@ def get_default_tfms_config(train: bool) -> Config:
         random_crop_scales (tuple): Range of size of the origin size random cropped.
     """
     flip_ratio = 0.5 if train else 0.0
-    random_crop = True if train else False
+    random_crop = train
     random_crop_scales = (0.6, 1.0) if train else None
 
     return Config(
@@ -275,15 +273,14 @@ class VideoDataset:
         self.video_records = []
 
         # get all dirs in root (and make sure they are dirs)
-        dirs = []
-        for entry in os.listdir(self.root):
-            if os.path.isdir(os.path.join(self.root, entry)):
-                dirs.append(os.path.join(self.root, entry))
+        dirs = [
+            os.path.join(self.root, entry)
+            for entry in os.listdir(self.root)
+            if os.path.isdir(os.path.join(self.root, entry))
+        ]
 
-        # add each video in each dir as a video record
-        label = 0
         self.classes = []
-        for action in dirs:
+        for label, action in enumerate(dirs):
             action = os.path.basename(os.path.normpath(action))
             self.video_records.extend(
                 [
@@ -297,7 +294,6 @@ class VideoDataset:
                     for vid in os.listdir(os.path.join(self.root, action))
                 ]
             )
-            label += 1
             self.classes.append(action)
 
         # random split
@@ -464,17 +460,13 @@ class VideoDataset:
         Returns
             Frames at sample length in a List
         """
-        clip = list()
-
         # decord.seek() seems to have a bug. use seek_accurate().
         video_reader.seek_accurate(offset)
 
-        # first frame
-        clip.append(video_reader.next().asnumpy())
-
+        clip = [video_reader.next().asnumpy()]
         # remaining frames
         try:
-            for i in range(self.sample_length - 1):
+            for _ in range(self.sample_length - 1):
                 step = (
                     randint(self.sample_step + 1)
                     if self.temporal_jitter
@@ -506,11 +498,9 @@ class VideoDataset:
         """
         record = self.video_records[idx]
         video_reader = decord.VideoReader(
-            "{}.{}".format(
-                os.path.join(self.root, record.path), self.video_ext
-            ),
-            # TODO try to add `ctx=decord.ndarray.gpu(0) or .cuda(0)`
+            f"{os.path.join(self.root, record.path)}.{self.video_ext}"
         )
+
         record._num_frames = len(video_reader)
 
         offsets = self._sample_indices(record)
@@ -559,10 +549,7 @@ class VideoDataset:
         )
 
         for i, ax in enumerate(axs):
-            if batch_size == 1:
-                clip = images[0]
-            else:
-                clip = images[i]
+            clip = images[0] if batch_size == 1 else images[i]
             clip = Rearrange("c t h w -> t c h w")(clip)
             if not isinstance(ax, np.ndarray):
                 ax = [ax]
@@ -584,12 +571,12 @@ class VideoDataset:
 
     def show_batch(self, train_or_test: str = "train", rows: int = 2) -> None:
         """Plot first few samples in the datasets"""
-        if train_or_test == "train":
-            batch = [self.train_ds[i] for i in range(rows)]
-        elif train_or_test == "test":
+        if train_or_test == "test":
             batch = [self.test_ds[i] for i in range(rows)]
+        elif train_or_test == "train":
+            batch = [self.train_ds[i] for i in range(rows)]
         else:
-            raise ValueError("Unknown data type {}".format(which_data))
+            raise ValueError(f"Unknown data type {which_data}")
 
         images = [im[0] for im in batch]
         labels = [im[1] for im in batch]

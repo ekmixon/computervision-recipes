@@ -82,7 +82,7 @@ class VideoLearner(object):
             self.dataset = dataset
             self.sample_length = self.dataset.sample_length
         else:
-            assert sample_length == 8 or sample_length == 32
+            assert sample_length in {8, 32}
             self.sample_length = sample_length
 
         self.model, self.model_name = self.init_model(
@@ -173,10 +173,7 @@ class VideoLearner(object):
 
         os.makedirs(model_dir, exist_ok=True)
 
-        data_loaders = {}
-        data_loaders["train"] = self.dataset.train_dl
-        data_loaders["valid"] = self.dataset.test_dl
-
+        data_loaders = {"train": self.dataset.train_dl, "valid": self.dataset.test_dl}
         # Move model to gpu before constructing optimizers and amp.initialize
         device = torch_device()
         self.model.to(device)
@@ -245,9 +242,7 @@ class VideoLearner(object):
 
         # set num classes
         topk = 5
-        if topk >= self.num_classes:
-            topk = self.num_classes
-
+        topk = min(topk, self.num_classes)
         for e in range(1, self.epochs + 1):
             print(
                 f"Epoch {e} ========================================================="
@@ -403,7 +398,7 @@ class VideoLearner(object):
 
         ax1 = fig.add_subplot(1, 1, 1)
         ax1.set_xlim([0, self.epochs - 1])
-        ax1.set_xticks(range(0, self.epochs))
+        ax1.set_xticks(range(self.epochs))
         ax1.set_xlabel("epochs")
         ax1.set_ylabel("loss", color="g")
         ax1.plot(valid_losses, "g-")
@@ -426,12 +421,12 @@ class VideoLearner(object):
             train_or_test: use train or test set
         """
         # asset train or test valid
-        assert train_or_test in ["train", "test"]
+        assert train_or_test in {"train", "test"}
 
         # set device and num_gpus
         num_gpus = num_devices()
         device = torch_device()
-        torch.backends.cudnn.benchmark = True if cuda.is_available() else False
+        torch.backends.cudnn.benchmark = bool(cuda.is_available())
 
         # init model with gpu (or not)
         self.model.to(device)
@@ -511,8 +506,7 @@ class VideoLearner(object):
         sample = torch.unsqueeze(transform(clip), 0)
         sample = sample.to(torch_device())
         output = self.model(sample)
-        scores = nn.functional.softmax(output, dim=1).data.cpu().numpy()[0]
-        return scores
+        return nn.functional.softmax(output, dim=1).data.cpu().numpy()[0]
 
     def _filter_labels(
         self,
@@ -583,11 +577,7 @@ class VideoLearner(object):
         if len(scores_cache) == averaging_size:
             scores_avg = scores_sum / averaging_size
 
-            if len(labels) >= 5:
-                num_labels = 5
-            else:
-                num_labels = len(labels) - 1
-
+            num_labels = 5 if len(labels) >= 5 else len(labels) - 1
             top5_id_score_dict = {
                 i: scores_avg[i]
                 for i in (-scores_avg).argpartition(num_labels - 1)[

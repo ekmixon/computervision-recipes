@@ -86,9 +86,8 @@ def main(
 
     # read list of classes
     classes = read_classes_file(classes_filepath)
-    if no_action_class is not None:
-        if no_action_class not in classes:
-            raise Exception("no_action_class does not appear in list of classes.")
+    if no_action_class is not None and no_action_class not in classes:
+        raise Exception("no_action_class does not appear in list of classes.")
 
     # filter annotations to only include actions that appear in the classes file
     video_info_df = video_info_df[video_info_df["clip_action_label"].isin(classes.keys())]
@@ -128,14 +127,14 @@ def main(
             with open(label_filepath, 'a') as f:
                 for index, row in negative_sample_info_df.iterrows():
                     f.write("\""+row.negative_clip_file_name+"\""+" "+str(classes[no_action_class])+"\n")
-        
+
         else:
             # get list of original video files
             video_files = os.listdir(video_dir)
 
             if sample_annotated_only:
                 video_files = list(set(video_info_df["file_list"]) & set(video_files))
-            
+
             extract_sampled_negative_clips(
                 video_info_df,
                 num_negative_samples,

@@ -125,20 +125,54 @@ class InceptionModule(nn.Module):
     def __init__(self, in_channels, out_channels, name):
         super(InceptionModule, self).__init__()
 
-        self.b0 = Unit3D(in_channels=in_channels, output_channels=out_channels[0], kernel_shape=[1, 1, 1], padding=0,
-                         name=name+'/Branch_0/Conv3d_0a_1x1')
-        self.b1a = Unit3D(in_channels=in_channels, output_channels=out_channels[1], kernel_shape=[1, 1, 1], padding=0,
-                          name=name+'/Branch_1/Conv3d_0a_1x1')
-        self.b1b = Unit3D(in_channels=out_channels[1], output_channels=out_channels[2], kernel_shape=[3, 3, 3],
-                          name=name+'/Branch_1/Conv3d_0b_3x3')
-        self.b2a = Unit3D(in_channels=in_channels, output_channels=out_channels[3], kernel_shape=[1, 1, 1], padding=0,
-                          name=name+'/Branch_2/Conv3d_0a_1x1')
-        self.b2b = Unit3D(in_channels=out_channels[3], output_channels=out_channels[4], kernel_shape=[3, 3, 3],
-                          name=name+'/Branch_2/Conv3d_0b_3x3')
+        self.b0 = Unit3D(
+            in_channels=in_channels,
+            output_channels=out_channels[0],
+            kernel_shape=[1, 1, 1],
+            padding=0,
+            name=f'{name}/Branch_0/Conv3d_0a_1x1',
+        )
+
+        self.b1a = Unit3D(
+            in_channels=in_channels,
+            output_channels=out_channels[1],
+            kernel_shape=[1, 1, 1],
+            padding=0,
+            name=f'{name}/Branch_1/Conv3d_0a_1x1',
+        )
+
+        self.b1b = Unit3D(
+            in_channels=out_channels[1],
+            output_channels=out_channels[2],
+            kernel_shape=[3, 3, 3],
+            name=f'{name}/Branch_1/Conv3d_0b_3x3',
+        )
+
+        self.b2a = Unit3D(
+            in_channels=in_channels,
+            output_channels=out_channels[3],
+            kernel_shape=[1, 1, 1],
+            padding=0,
+            name=f'{name}/Branch_2/Conv3d_0a_1x1',
+        )
+
+        self.b2b = Unit3D(
+            in_channels=out_channels[3],
+            output_channels=out_channels[4],
+            kernel_shape=[3, 3, 3],
+            name=f'{name}/Branch_2/Conv3d_0b_3x3',
+        )
+
         self.b3a = MaxPool3dSamePadding(kernel_size=[3, 3, 3],
                                 stride=(1, 1, 1), padding=0)
-        self.b3b = Unit3D(in_channels=in_channels, output_channels=out_channels[5], kernel_shape=[1, 1, 1], padding=0,
-                          name=name+'/Branch_3/Conv3d_0b_1x1')
+        self.b3b = Unit3D(
+            in_channels=in_channels,
+            output_channels=out_channels[5],
+            kernel_shape=[1, 1, 1],
+            padding=0,
+            name=f'{name}/Branch_3/Conv3d_0b_1x1',
+        )
+
         self.name = name
 
     def forward(self, x):    
@@ -206,7 +240,7 @@ class InceptionI3d(nn.Module):
         """
 
         if final_endpoint not in self.VALID_ENDPOINTS:
-            raise ValueError('Unknown final endpoint %s' % final_endpoint)
+            raise ValueError(f'Unknown final endpoint {final_endpoint}')
 
         super(InceptionI3d, self).__init__()
         self._num_classes = num_classes
@@ -215,24 +249,24 @@ class InceptionI3d(nn.Module):
         self.logits = None
 
         if self._final_endpoint not in self.VALID_ENDPOINTS:
-            raise ValueError('Unknown final endpoint %s' % self._final_endpoint)
+            raise ValueError(f'Unknown final endpoint {self._final_endpoint}')
 
         self.end_points = {}
         end_point = 'Conv3d_1a_7x7'
         self.end_points[end_point] = Unit3D(in_channels=in_channels, output_channels=64, kernel_shape=[7, 7, 7],
                                             stride=(2, 2, 2), padding=(3,3,3),  name=name+end_point)
         if self._final_endpoint == end_point: return
-        
+
         end_point = 'MaxPool3d_2a_3x3'
         self.end_points[end_point] = MaxPool3dSamePadding(kernel_size=[1, 3, 3], stride=(1, 2, 2),
                                                              padding=0)
         if self._final_endpoint == end_point: return
-        
+
         end_point = 'Conv3d_2b_1x1'
         self.end_points[end_point] = Unit3D(in_channels=64, output_channels=64, kernel_shape=[1, 1, 1], padding=0,
                                        name=name+end_point)
         if self._final_endpoint == end_point: return
-        
+
         end_point = 'Conv3d_2c_3x3'
         self.end_points[end_point] = Unit3D(in_channels=64, output_channels=192, kernel_shape=[3, 3, 3], padding=1,
                                        name=name+end_point)
@@ -242,7 +276,7 @@ class InceptionI3d(nn.Module):
         self.end_points[end_point] = MaxPool3dSamePadding(kernel_size=[1, 3, 3], stride=(1, 2, 2),
                                                              padding=0)
         if self._final_endpoint == end_point: return
-        
+
         end_point = 'Mixed_3b'
         self.end_points[end_point] = InceptionModule(192, [64,96,128,16,32,32], name+end_point)
         if self._final_endpoint == end_point: return

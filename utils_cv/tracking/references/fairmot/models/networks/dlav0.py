@@ -16,7 +16,7 @@ import numpy as np
 BatchNorm = nn.BatchNorm2d
 
 def get_model_url(data='imagenet', name='dla34', hash='ba72cf86'):
-    return join('http://dl.yf.io/dla/models', data, '{}-{}.pth'.format(name, hash))
+    return join('http://dl.yf.io/dla/models', data, f'{name}-{hash}.pth')
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -267,11 +267,8 @@ class DLA(nn.Module):
                 BatchNorm(planes),
             )
 
-        layers = []
-        layers.append(block(inplanes, planes, stride, downsample=downsample))
-        for i in range(1, blocks):
-            layers.append(block(inplanes, planes))
-
+        layers = [block(inplanes, planes, stride, downsample=downsample)]
+        layers.extend(block(inplanes, planes) for _ in range(1, blocks))
         return nn.Sequential(*layers)
 
     def _make_conv_level(self, inplanes, planes, convs, stride=1, dilation=1):
@@ -290,16 +287,15 @@ class DLA(nn.Module):
         y = []
         x = self.base_layer(x)
         for i in range(6):
-            x = getattr(self, 'level{}'.format(i))(x)
+            x = getattr(self, f'level{i}')(x)
             y.append(x)
         if self.return_levels:
             return y
-        else:
-            x = self.avgpool(x)
-            x = self.fc(x)
-            x = x.view(x.size(0), -1)
+        x = self.avgpool(x)
+        x = self.fc(x)
+        x = x.view(x.size(0), -1)
 
-            return x
+        return x
 
     def load_pretrained_model(self,  data='imagenet', name='dla34', hash='ba72cf86'):
         fc = self.fc
@@ -453,8 +449,8 @@ class IDAUp(nn.Module):
                     out_dim, out_dim, f * 2, stride=f, padding=f // 2,
                     output_padding=0, groups=out_dim, bias=False)
                 fill_up_weights(up)
-            setattr(self, 'proj_' + str(i), proj)
-            setattr(self, 'up_' + str(i), up)
+            setattr(self, f'proj_{str(i)}', proj)
+            setattr(self, f'up_{str(i)}', up)
 
         for i in range(1, len(channels)):
             node = nn.Sequential(
@@ -463,7 +459,7 @@ class IDAUp(nn.Module):
                           padding=node_kernel // 2, bias=False),
                 BatchNorm(out_dim),
                 nn.ReLU(inplace=True))
-            setattr(self, 'node_' + str(i), node)
+            setattr(self, f'node_{str(i)}', node)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -474,17 +470,19 @@ class IDAUp(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, layers):
-        assert len(self.channels) == len(layers), \
-            '{} vs {} layers'.format(len(self.channels), len(layers))
+        assert len(self.channels) == len(
+            layers
+        ), f'{len(self.channels)} vs {len(layers)} layers'
+
         layers = list(layers)
         for i, l in enumerate(layers):
-            upsample = getattr(self, 'up_' + str(i))
-            project = getattr(self, 'proj_' + str(i))
+            upsample = getattr(self, f'up_{str(i)}')
+            project = getattr(self, f'proj_{str(i)}')
             layers[i] = upsample(project(l))
         x = layers[0]
         y = []
         for i in range(1, len(layers)):
-            node = getattr(self, 'node_' + str(i))
+            node = getattr(self, f'node_{str(i)}')
             x = node(torch.cat([x, layers[i]], 1))
             y.append(x)
         return x, y
@@ -500,9 +498,12 @@ class DLAUp(nn.Module):
         scales = np.array(scales, dtype=int)
         for i in range(len(channels) - 1):
             j = -i - 2
-            setattr(self, 'ida_{}'.format(i),
-                    IDAUp(3, channels[j], in_channels[j:],
-                          scales[j:] // scales[j]))
+            setattr(
+                self,
+                f'ida_{i}',
+                IDAUp(3, channels[j], in_channels[j:], scales[j:] // scales[j]),
+            )
+
             scales[j + 1:] = scales[j]
             in_channels[j + 1:] = [channels[j] for _ in channels[j + 1:]]
 
@@ -510,7 +511,7 @@ class DLAUp(nn.Module):
         layers = list(layers)
         assert len(layers) > 1
         for i in range(len(layers) - 1):
-            ida = getattr(self, 'ida_{}'.format(i))
+            ida = getattr(self, f'ida_{i}')
             x, y = ida(layers[-i - 2:])
             layers[-i - 1:] = y
         return x
@@ -596,9 +597,7 @@ class DLASeg(nn.Module):
         x = self.dla_up(x[self.first_level:])
         # x = self.fc(x)
         # y = self.softmax(self.up(x))
-        ret = {}
-        for head in self.heads:
-            ret[head] = self.__getattr__(head)(x)
+        ret = {head: self.__getattr__(head)(x) for head in self.heads}
         return [ret]
 
     '''
@@ -634,8 +633,10 @@ def dla169up(classes, pretrained_base=None, **kwargs):
 '''
 
 def get_pose_net(num_layers, heads, head_conv=256, down_ratio=4):
-  model = DLASeg('dla{}'.format(num_layers), heads,
-                 pretrained=True,
-                 down_ratio=down_ratio,
-                 head_conv=head_conv)
-  return model
+    return DLASeg(
+        f'dla{num_layers}',
+        heads,
+        pretrained=True,
+        down_ratio=down_ratio,
+        head_conv=head_conv,
+    )

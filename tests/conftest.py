@@ -129,8 +129,7 @@ def path_segmentation_notebooks():
 def classification_notebooks():
     folder_notebooks = path_classification_notebooks()
 
-    # Path for the notebooks
-    paths = {
+    return {
         "00": os.path.join(folder_notebooks, "00_webcam.ipynb"),
         "01": os.path.join(folder_notebooks, "01_training_introduction.ipynb"),
         "02": os.path.join(
@@ -161,15 +160,13 @@ def classification_notebooks():
             folder_notebooks, "24_exploring_hyperparameters_on_azureml.ipynb"
         ),
     }
-    return paths
 
 
 @pytest.fixture(scope="module")
 def similarity_notebooks():
     folder_notebooks = path_similarity_notebooks()
 
-    # Path for the notebooks
-    paths = {
+    return {
         "00": os.path.join(folder_notebooks, "00_webcam.ipynb"),
         "01": os.path.join(
             folder_notebooks, "01_training_and_evaluation_introduction.ipynb"
@@ -180,15 +177,13 @@ def similarity_notebooks():
         ),
         "12": os.path.join(folder_notebooks, "12_fast_retrieval.ipynb"),
     }
-    return paths
 
 
 @pytest.fixture(scope="module")
 def detection_notebooks():
     folder_notebooks = path_detection_notebooks()
 
-    # Path for the notebooks
-    paths = {
+    return {
         "00": os.path.join(folder_notebooks, "00_webcam.ipynb"),
         "01": os.path.join(folder_notebooks, "01_training_introduction.ipynb"),
         "02": os.path.join(folder_notebooks, "02_mask_rcnn.ipynb"),
@@ -206,33 +201,30 @@ def detection_notebooks():
             folder_notebooks, "20_deployment_on_kubernetes.ipynb"
         ),
     }
-    return paths
 
 
 @pytest.fixture(scope="module")
 def action_recognition_notebooks():
     folder_notebooks = path_action_recognition_notebooks()
 
-    # Path for the notebooks
-    paths = {
+    return {
         "00": os.path.join(folder_notebooks, "00_webcam.ipynb"),
         "01": os.path.join(folder_notebooks, "01_training_introduction.ipynb"),
         "02": os.path.join(folder_notebooks, "02_training_hmbd.ipynb"),
         "10": os.path.join(folder_notebooks, "10_video_transformation.ipynb"),
     }
-    return paths
 
 
 @pytest.fixture(scope="module")
 def segmentation_notebooks():
     folder_notebooks = path_segmentation_notebooks()
 
-    # Path for the notebooks
-    paths = {
+    return {
         "01": os.path.join(folder_notebooks, "01_training_introduction.ipynb"),
-        "11": os.path.join(folder_notebooks, "11_exploring_hyperparameters.ipynb"),
+        "11": os.path.join(
+            folder_notebooks, "11_exploring_hyperparameters.ipynb"
+        ),
     }
-    return paths
 
 
 # ----- Function fixtures ----------------------------------------------------------
@@ -401,7 +393,8 @@ def testing_im_list(tmp_session):
     can_im_paths = os.listdir(os.path.join(im_paths, "can"))
     can_im_paths = [
         os.path.join(im_paths, "can", im_name) for im_name in can_im_paths
-    ][0:5]
+    ][:5]
+
     return can_im_paths
 
 
@@ -419,7 +412,8 @@ def testing_databunch(tmp_session):
     can_im_paths = os.listdir(os.path.join(im_paths, "can"))
     can_im_paths = [
         os.path.join(im_paths, "can", im_name) for im_name in can_im_paths
-    ][0:5]
+    ][:5]
+
     random.seed(642)
     data = (
         ImageList.from_folder(im_paths)
@@ -430,9 +424,7 @@ def testing_databunch(tmp_session):
         .normalize(imagenet_stats)
     )
 
-    validation_bunch = data.valid_ds
-
-    return validation_bunch
+    return data.valid_ds
 
 
 # ------|-- Detection -------------------------------------------------------------
@@ -441,7 +433,7 @@ def testing_databunch(tmp_session):
 @pytest.fixture(scope="session")
 def od_cup_path(tmp_session) -> str:
     """ Returns the path to the downloaded cup image. """
-    im_url = storage_url + "images/cvbp_cup.jpg"
+    im_url = f"{storage_url}images/cvbp_cup.jpg"
     im_path = os.path.join(tmp_session, "example.jpg")
     urllib.request.urlretrieve(im_url, im_path)
     return im_path
@@ -450,7 +442,7 @@ def od_cup_path(tmp_session) -> str:
 @pytest.fixture(scope="session")
 def od_cup_mask_path(tmp_session) -> str:
     """ Returns the path to the downloaded cup mask image. """
-    im_url = storage_url + "images/cvbp_cup_mask.png"
+    im_url = f"{storage_url}images/cvbp_cup_mask.png"
     im_path = os.path.join(tmp_session, "example_mask.png")
     urllib.request.urlretrieve(im_url, im_path)
     return im_path
@@ -585,9 +577,7 @@ def od_sample_raw_preds():
     start_points = [[120, 200], [350, 350], [220, 300], [250, 400], [100, 350]]
     keypoints = []
     for x, y in start_points:
-        points = []
-        for i in range(13):
-            points.append([x + i, y + i, 2])
+        points = [[x + i, y + i, 2] for i in range(13)]
         keypoints.append(points)
 
     return [
@@ -906,10 +896,9 @@ def tiny_ic_databunch_valid_features(tiny_ic_databunch):
     """ Returns DNN features for the tiny fridge objects dataset. """
     learn = cnn_learner(tiny_ic_databunch, models.resnet18)
     embedding_layer = learn.model[1][6]
-    features = compute_features_learner(
+    return compute_features_learner(
         tiny_ic_databunch, DatasetType.Valid, learn, embedding_layer
     )
-    return features
 
 
 # ------|-- Segmentation ---------------------------------------------

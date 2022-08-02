@@ -177,11 +177,12 @@ class opts(object):
         if self.task == "mot":
             self.heads = {
                 "hm": self.num_classes,
-                "wh": 2 if not self.cat_spec_wh else 2 * self.num_classes,
+                "wh": 2 * self.num_classes if self.cat_spec_wh else 2,
                 "id": self.reid_dim,
             }
+
             if self.reg_offset:
-                self.heads.update({"reg": 2})
+                self.heads["reg"] = 2
             self.nID = dataset.nID
             self.img_size = (self.input_w, self.input_h)
         else:
@@ -189,9 +190,7 @@ class opts(object):
 
     def set_gpus(self, value):
         gpus_list = [int(gpu) for gpu in value.split(",")]
-        self.gpus = (
-            [i for i in range(len(gpus_list))] if gpus_list[0] >= 0 else [-1]
-        )
+        self.gpus = list(range(len(gpus_list))) if gpus_list[0] >= 0 else [-1]
         self.gpus_str = value
 
     def set_head_conv(self, value):

@@ -37,9 +37,9 @@ class GroupedBatchSampler(BatchSampler):
     def __init__(self, sampler, group_ids, batch_size):
         if not isinstance(sampler, Sampler):
             raise ValueError(
-                "sampler should be an instance of "
-                "torch.utils.data.Sampler, but got sampler={}".format(sampler)
+                f"sampler should be an instance of torch.utils.data.Sampler, but got sampler={sampler}"
             )
+
         self.sampler = sampler
         self.group_ids = group_ids
         self.batch_size = batch_size
@@ -109,7 +109,7 @@ def _compute_aspect_ratios_slow(dataset, indices=None):
         collate_fn=lambda x: x[0])
     aspect_ratios = []
     with tqdm(total=len(dataset)) as pbar:
-        for _i, (img, _) in enumerate(data_loader):
+        for img, _ in data_loader:
             pbar.update(1)
             height, width = img.shape[-2:]
             aspect_ratio = float(width) / float(height)
@@ -179,8 +179,7 @@ def compute_aspect_ratios(dataset, indices=None):
 def _quantize(x, bins):
     bins = copy.deepcopy(bins)
     bins = sorted(bins)
-    quantized = list(map(lambda y: bisect.bisect_right(bins, y), x))
-    return quantized
+    return list(map(lambda y: bisect.bisect_right(bins, y), x))
 
 
 def create_aspect_ratio_groups(dataset, k=0):
@@ -190,6 +189,6 @@ def create_aspect_ratio_groups(dataset, k=0):
     # count number of elements per group
     counts = np.unique(groups, return_counts=True)[1]
     fbins = [0] + bins + [np.inf]
-    print("Using {} as bins for aspect ratio quantization".format(fbins))
-    print("Count of instances per bin: {}".format(counts))
+    print(f"Using {fbins} as bins for aspect ratio quantization")
+    print(f"Count of instances per bin: {counts}")
     return groups

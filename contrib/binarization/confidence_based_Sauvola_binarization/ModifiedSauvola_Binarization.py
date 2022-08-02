@@ -35,13 +35,13 @@ def SauvolaModBinarization(image,n1=51,n2=51,k1=0.3,k2=0.3,default=True):
 		@cite https://drive.google.com/file/d/1D3CyI5vtodPJeZaD2UV5wdcaIMtkBbdZ/view?usp=sharing
     '''
 
-    if(default):
+    if default:
         n1 = int(0.05*min(image.shape[0],image.shape[1]))
         if (n1%2==0):
-            n1 = n1+1
+            n1 += 1
         n2 = int(0.1*min(image.shape[0],image.shape[1]))
         if (n2%2==0):
-            n2 = n2+1
+            n2 += 1
         k1 = 0.5
         k2 = 0.5
     if(image.ndim==3):

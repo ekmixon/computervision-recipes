@@ -30,9 +30,7 @@ def binarise_mask(mask: Union[np.ndarray, str, Path]) -> np.ndarray:
     assert mask.ndim == 2, "'mask' should have at least 2 channels."
     # remove background
     obj_values = np.unique(mask)[1:]
-    # get the binary masks for each color (instance)
-    binary_masks = mask == obj_values[:, None, None]
-    return binary_masks
+    return mask == obj_values[:, None, None]
 
 
 def colorise_binary_mask(
@@ -45,9 +43,7 @@ def colorise_binary_mask(
     r, g, b = np.zeros([3, h, w]).astype(np.uint8)
     # set corresponding color for each channel
     r[binary_mask], g[binary_mask], b[binary_mask] = color
-    # merge RGB channels
-    colored_mask = np.dstack([r, g, b])
-    return colored_mask
+    return np.dstack([r, g, b])
 
 
 def transparentise_mask(

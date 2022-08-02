@@ -19,13 +19,10 @@ def ratio_correct(void_id, input, target):
     target = target.squeeze(1)
     if void_id:
         mask = target != void_id
-        ratio_correct = (
-            (input.argmax(dim=1)[mask] == target[mask]).float().mean()
-        )
-    else:
-        ratio_correct = (input.argmax(dim=1) == target).float().mean()
+        return (input.argmax(dim=1)[mask] == target[mask]).float().mean()
 
-    return ratio_correct
+    else:
+        return (input.argmax(dim=1) == target).float().mean()
 
 
 def get_ratio_correct_metric(classes: List[str]):
@@ -38,11 +35,7 @@ def get_ratio_correct_metric(classes: List[str]):
         Objective function.
     """
     class2id = {v: k for k, v in enumerate(classes)}
-    if "void" in class2id:
-        void_id = class2id["void"]
-    else:
-        void_id = None
-
+    void_id = class2id.get("void")
     return partial(ratio_correct, void_id)
 
 

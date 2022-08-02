@@ -33,7 +33,7 @@ def _slow_neg_loss(pred, gt):
   neg_loss = neg_loss.sum()
 
   if pos_pred.nelement() == 0:
-    loss = loss - neg_loss
+    loss -= neg_loss
   else:
     loss = loss - (pos_loss + neg_loss) / num_pos
   return loss
@@ -61,7 +61,7 @@ def _neg_loss(pred, gt):
   neg_loss = neg_loss.sum()
 
   if num_pos == 0:
-    loss = loss - neg_loss
+    loss -= neg_loss
   else:
     loss = loss - (pos_loss + neg_loss) / num_pos
   return loss
@@ -133,8 +133,7 @@ class RegLoss(nn.Module):
   
   def forward(self, output, mask, ind, target):
     pred = _tranpose_and_gather_feat(output, ind)
-    loss = _reg_loss(pred, target, mask)
-    return loss
+    return _reg_loss(pred, target, mask)
 
 class RegL1Loss(nn.Module):
   def __init__(self):
@@ -181,8 +180,7 @@ class L1Loss(nn.Module):
   def forward(self, output, mask, ind, target):
     pred = _tranpose_and_gather_feat(output, ind)
     mask = mask.unsqueeze(2).expand_as(pred).float()
-    loss = F.l1_loss(pred * mask, target * mask, reduction='elementwise_mean')
-    return loss
+    return F.l1_loss(pred * mask, target * mask, reduction='elementwise_mean')
 
 class BinRotLoss(nn.Module):
   def __init__(self):
@@ -190,8 +188,7 @@ class BinRotLoss(nn.Module):
   
   def forward(self, output, mask, ind, rotbin, rotres):
     pred = _tranpose_and_gather_feat(output, ind)
-    loss = compute_rot_loss(pred, rotbin, rotres, mask)
-    return loss
+    return compute_rot_loss(pred, rotbin, rotres, mask)
 
 def compute_res_loss(output, target):
     return F.smooth_l1_loss(output, target, reduction='elementwise_mean')
@@ -253,29 +250,27 @@ class TripletLoss(nn.Module):
         self.mutual = mutual_flag
 
     def forward(self, inputs, targets):
-        """
+      """
         Args:
             inputs: feature matrix with shape (batch_size, feat_dim)
             targets: ground truth labels with shape (num_classes)
         """
-        n = inputs.size(0)
-        # inputs = 1. * inputs / (torch.norm(inputs, 2, dim=-1, keepdim=True).expand_as(inputs) + 1e-12)
-        # Compute pairwise distance, replace by the official when merged
-        dist = torch.pow(inputs, 2).sum(dim=1, keepdim=True).expand(n, n)
-        dist = dist + dist.t()
-        dist.addmm_(1, -2, inputs, inputs.t())
-        dist = dist.clamp(min=1e-12).sqrt()  # for numerical stability
-        # For each anchor, find the hardest positive and negative
-        mask = targets.expand(n, n).eq(targets.expand(n, n).t())
-        dist_ap, dist_an = [], []
-        for i in range(n):
-            dist_ap.append(dist[i][mask[i]].max().unsqueeze(0))
-            dist_an.append(dist[i][mask[i] == 0].min().unsqueeze(0))
-        dist_ap = torch.cat(dist_ap)
-        dist_an = torch.cat(dist_an)
-        # Compute ranking hinge loss
-        y = torch.ones_like(dist_an)
-        loss = self.ranking_loss(dist_an, dist_ap, y)
-        if self.mutual:
-            return loss, dist
-        return loss
+      n = inputs.size(0)
+      # inputs = 1. * inputs / (torch.norm(inputs, 2, dim=-1, keepdim=True).expand_as(inputs) + 1e-12)
+      # Compute pairwise distance, replace by the official when merged
+      dist = torch.pow(inputs, 2).sum(dim=1, keepdim=True).expand(n, n)
+      dist = dist + dist.t()
+      dist.addmm_(1, -2, inputs, inputs.t())
+      dist = dist.clamp(min=1e-12).sqrt()  # for numerical stability
+      # For each anchor, find the hardest positive and negative
+      mask = targets.expand(n, n).eq(targets.expand(n, n).t())
+      dist_ap, dist_an = [], []
+      for i in range(n):
+          dist_ap.append(dist[i][mask[i]].max().unsqueeze(0))
+          dist_an.append(dist[i][mask[i] == 0].min().unsqueeze(0))
+      dist_ap = torch.cat(dist_ap)
+      dist_an = torch.cat(dist_an)
+      # Compute ranking hinge loss
+      y = torch.ones_like(dist_an)
+      loss = self.ranking_loss(dist_an, dist_ap, y)
+      return (loss, dist) if self.mutual else loss

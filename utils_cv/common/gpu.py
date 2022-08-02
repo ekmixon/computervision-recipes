@@ -61,10 +61,7 @@ def db_num_workers(non_windows_num_workers: int = 16):
 
     For a description of the slow windows speed see: https://github.com/pytorch/pytorch/issues/12831
     """
-    if is_windows() or is_binder():
-        return 0
-    else:
-        return non_windows_num_workers
+    return 0 if is_windows() or is_binder() else non_windows_num_workers
 
 
 def system_info():

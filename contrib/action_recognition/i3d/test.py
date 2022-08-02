@@ -60,7 +60,7 @@ def test(model, test_loader, modality):
 
             if step % config.TEST.PRINT_FREQ == 0:
                 print(('Step: [{0}/{1}]'.format(step, len(test_loader))))
-    
+
     targets = torch.cat(target_list)
     predictions = torch.cat(predictions_list)
     return targets, predictions
@@ -82,9 +82,9 @@ def run(*options, cfg=None):
 
     # Data-parallel
     devices_lst = list(range(torch.cuda.device_count()))
-    print("Devices {}".format(devices_lst))
+    print(f"Devices {devices_lst}")
 
-    if (config.TEST.MODALITY == "RGB") or (config.TEST.MODALITY == "combined"):
+    if config.TEST.MODALITY in ["RGB", "combined"]:
 
         rgb_loader = torch.utils.data.DataLoader(
             I3DDataSet(
@@ -115,12 +115,12 @@ def run(*options, cfg=None):
         targets, rgb_predictions = test(rgb_model, rgb_loader, "RGB")
 
         del rgb_model
-        
+
         targets = targets.cuda(non_blocking=True)
         rgb_top1_accuracy = accuracy(rgb_predictions, targets, topk=(1, ))
         print("rgb top1 accuracy: ", rgb_top1_accuracy[0].cpu().numpy().tolist())
-    
-    if (config.TEST.MODALITY == "flow") or (config.TEST.MODALITY == "combined"):
+
+    if config.TEST.MODALITY in ["flow", "combined"]:
 
         flow_loader = torch.utils.data.DataLoader(
             I3DDataSet(

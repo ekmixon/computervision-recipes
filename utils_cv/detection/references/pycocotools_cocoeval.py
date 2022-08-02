@@ -24,11 +24,7 @@ def compute_ap(v, ap=1, iouThr=None, areaRng='all', maxDets=100, verbose = False
             t = np.where(iouThr == p.iouThrs)[0]
             s = s[t]
         s = s[:,:,aind,mind]
-    if len(s[s>-1])==0:
-        mean_s = -1
-    else:
-        mean_s = np.mean(s[s>-1])
-
+    mean_s = -1 if len(s[s>-1])==0 else np.mean(s[s>-1])
     if verbose:
         iStr = ' {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}'
         titleStr = 'Average Precision' if ap == 1 else 'Average Recall'
@@ -37,5 +33,5 @@ def compute_ap(v, ap=1, iouThr=None, areaRng='all', maxDets=100, verbose = False
             if iouThr is None else '{:0.2f}'.format(iouThr)
         resStr = iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s)
         print(resStr)
-    
+
     return mean_s

@@ -184,12 +184,9 @@ class PoseResNet(nn.Module):
                 nn.BatchNorm2d(planes * block.expansion, momentum=BN_MOMENTUM),
             )
 
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
+        layers = [block(self.inplanes, planes, stride, downsample)]
         self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes))
-
+        layers.extend(block(self.inplanes, planes) for _ in range(1, blocks))
         return nn.Sequential(*layers)
 
     def _get_deconv_cfg(self, deconv_kernel, index):
@@ -207,14 +204,14 @@ class PoseResNet(nn.Module):
 
     def _make_deconv_layer(self, num_layers, num_filters, num_kernels):
         assert num_layers == len(num_filters), \
-            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
+                'ERROR: num_deconv_layers is different len(num_deconv_filters)'
         assert num_layers == len(num_kernels), \
-            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
+                'ERROR: num_deconv_layers is different len(num_deconv_filters)'
 
         layers = []
         for i in range(num_layers):
             kernel, padding, output_padding = \
-                self._get_deconv_cfg(num_kernels[i], i)
+                    self._get_deconv_cfg(num_kernels[i], i)
 
             planes = num_filters[i]
             fc = DCN(self.inplanes, planes, 
@@ -234,12 +231,17 @@ class PoseResNet(nn.Module):
                     bias=self.deconv_with_bias)
             fill_up_weights(up)
 
-            layers.append(fc)
-            layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
-            layers.append(nn.ReLU(inplace=True))
-            layers.append(up)
-            layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
-            layers.append(nn.ReLU(inplace=True))
+            layers.extend(
+                (
+                    fc,
+                    nn.BatchNorm2d(planes, momentum=BN_MOMENTUM),
+                    nn.ReLU(inplace=True),
+                    up,
+                    nn.BatchNorm2d(planes, momentum=BN_MOMENTUM),
+                    nn.ReLU(inplace=True),
+                )
+            )
+
             self.inplanes = planes
 
         return nn.Sequential(*layers)
@@ -256,22 +258,19 @@ class PoseResNet(nn.Module):
         x = self.layer4(x)
 
         x = self.deconv_layers(x)
-        ret = {}
-        for head in self.heads:
-            ret[head] = self.__getattr__(head)(x)
+        ret = {head: self.__getattr__(head)(x) for head in self.heads}
         return [ret]
 
     def init_weights(self, num_layers):
-        if 1:
-            url = model_urls['resnet{}'.format(num_layers)]
-            pretrained_state_dict = model_zoo.load_url(url)
-            print('=> loading pretrained model {}'.format(url))
-            self.load_state_dict(pretrained_state_dict, strict=False)
-            print('=> init deconv weights from normal distribution')
-            for name, m in self.deconv_layers.named_modules():
-                if isinstance(m, nn.BatchNorm2d):
-                    nn.init.constant_(m.weight, 1)
-                    nn.init.constant_(m.bias, 0)
+        url = model_urls[f'resnet{num_layers}']
+        pretrained_state_dict = model_zoo.load_url(url)
+        print(f'=> loading pretrained model {url}')
+        self.load_state_dict(pretrained_state_dict, strict=False)
+        print('=> init deconv weights from normal distribution')
+        for name, m in self.deconv_layers.named_modules():
+            if isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
 
 resnet_spec = {18: (BasicBlock, [2, 2, 2, 2]),

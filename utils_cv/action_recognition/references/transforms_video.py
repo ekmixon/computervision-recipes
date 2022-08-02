@@ -35,14 +35,13 @@ class ResizeVideo(object):
                 scale = self.size / min(clip.shape[-2:])
             else:
                 size = (int(self.size), int(self.size))
+        elif self.keep_ratio:
+            scale = min(
+                self.size[0] / clip.shape[-2],
+                self.size[1] / clip.shape[-1],
+            )
         else:
-            if self.keep_ratio:
-                scale = min(
-                    self.size[0] / clip.shape[-2],
-                    self.size[1] / clip.shape[-1],
-                )
-            else:
-                size = self.size
+            size = self.size
 
         return nn.functional.interpolate(
             clip,
@@ -150,7 +149,7 @@ class RandomResizedCropVideo(object):
         _w, _h = clip.shape[3], clip.shape[2]
         area = _w * _h
 
-        for attempt in range(10):
+        for _ in range(10):
             target_area = random.uniform(*scale) * area
             log_ratio = (math.log(ratio[0]), math.log(ratio[1]))
             aspect_ratio = math.exp(random.uniform(*log_ratio))

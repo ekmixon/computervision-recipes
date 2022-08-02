@@ -34,11 +34,10 @@ from .references.fairmot.trains.train_factory import train_factory
 
 
 def _get_gpu_str():
-    if cuda.is_available():
-        devices = [str(x) for x in range(cuda.device_count())]
-        return ",".join(devices)
-    else:
+    if not cuda.is_available():
         return "-1"  # cpu
+    devices = [str(x) for x in range(cuda.device_count())]
+    return ",".join(devices)
 
 
 def _get_frame(input_video: str, frame_id: int):
@@ -89,10 +88,7 @@ def evaluate_mot(gt_root_path: str, exp_name: str, result_path: str) -> object:
     # Implementation inspired from code found here: https://github.com/ifzhang/FairMOT/blob/master/src/track.py
     evaluator = Evaluator(gt_root_path, exp_name, "mot")
 
-    # Run evaluation using pymotmetrics package
-    mot_accumulator = evaluator.eval_file(result_path)
-
-    return mot_accumulator
+    return evaluator.eval_file(result_path)
 
 
 def mot_summary(accumulators: list, exp_names: list) -> str:
@@ -108,13 +104,11 @@ def mot_summary(accumulators: list, exp_names: list) -> str:
     mh = mm.metrics.create()
 
     summary = Evaluator.get_summary(accumulators, exp_names, metrics)
-    strsummary = mm.io.render_summary(
+    return mm.io.render_summary(
         summary,
         formatters=mh.formatters,
         namemap=mm.io.motchallenge_metric_names,
     )
-
-    return strsummary
 
 
 class TrackingLearner(object):
@@ -249,7 +243,7 @@ class TrackingLearner(object):
         ax1 = fig.add_subplot(1, 1, 1)
 
         ax1.set_xlim([0, len(self.losses_dict["loss"]) - 1])
-        ax1.set_xticks(range(0, len(self.losses_dict["loss"])))
+        ax1.set_xticks(range(len(self.losses_dict["loss"])))
         ax1.set_xlabel("epochs")
         ax1.set_ylabel("losses")
 
@@ -293,8 +287,7 @@ class TrackingLearner(object):
         )
         # Save tracking results in tmp
         mot_accumulator = evaluate_mot(gt_root_path, "single_vid", result_path)
-        strsummary = mot_summary([mot_accumulator], ("single_vid",))
-        return strsummary
+        return mot_summary([mot_accumulator], ("single_vid",))
 
     def eval_mot(
         self,
@@ -326,7 +319,7 @@ class TrackingLearner(object):
 
         # Loop over all video sequences
         for seq in seqs:
-            result_filename = "{}.txt".format(seq)
+            result_filename = f"{seq}.txt"
             im_path = osp.join(data_root, seq, "img1")
             result_path = osp.join(result_root, exp_name, result_filename)
             with open(osp.join(data_root, seq, "seqinfo.ini")) as seqinfo_file:
@@ -361,11 +354,7 @@ class TrackingLearner(object):
                 mot_accumulator = evaluate_mot(data_root, seq, result_path)
                 accumulators.append(mot_accumulator)
 
-        if run_eval:
-            strsummary = mot_summary(accumulators, seqs)
-            return strsummary
-        else:
-            return None
+        return mot_summary(accumulators, seqs) if run_eval else None
 
     def predict(
         self,
@@ -401,10 +390,9 @@ class TrackingLearner(object):
         # initialize dataloader
         dataloader = self._get_dataloader(im_or_video_path)
 
-        frame_id = 0
         out = {}
         results = []
-        for path, img, img0 in dataloader:
+        for frame_id, (path, img, img0) in enumerate(dataloader):
             blob = torch.from_numpy(img).cuda().unsqueeze(0)
             online_targets = tracker.update(blob, img0)
             online_bboxes = []
@@ -419,8 +407,6 @@ class TrackingLearner(object):
                     )
                     online_bboxes.append(bb)
             out[frame_id] = online_bboxes
-            frame_id += 1
-
         return out
 
     def _get_dataloader(self, im_or_video_path: str) -> DataLoader:
@@ -444,26 +430,18 @@ class TrackingLearner(object):
 
         # if path is to a root directory of images
 
-        if (
-            osp.isdir(im_or_video_path)
-            and len(
-                list(
-                    filter(
-                        lambda x: osp.splitext(x)[1].lower() in im_format,
-                        sorted(glob.glob("%s/*.*" % im_or_video_path)),
-                    )
-                )
+        if osp.isdir(im_or_video_path) and list(
+            filter(
+                lambda x: osp.splitext(x)[1].lower() in im_format,
+                sorted(glob.glob(f"{im_or_video_path}/*.*")),
             )
-            > 0
         ):
             return LoadImages(im_or_video_path)
-        # if path is to a single video file
         elif (
             osp.isfile(im_or_video_path)
             and osp.splitext(im_or_video_path)[1] in video_format
         ):
             return LoadVideo(im_or_video_path)
-        # if path is to a single image file
         elif (
             osp.isfile(im_or_video_path)
             and osp.splitext(im_or_video_path)[1] in im_format

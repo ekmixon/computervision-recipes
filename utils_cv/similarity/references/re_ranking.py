@@ -66,10 +66,7 @@ def re_ranking(q_g_dist, q_q_dist, g_g_dist, k1=20, k2=6, lambda_value=0.3):
         V = V_qe
         del V_qe
     del initial_rank
-    invIndex = []
-    for i in range(all_num):
-        invIndex.append(np.where(V[:,i] != 0)[0])
-
+    invIndex = [np.where(V[:,i] != 0)[0] for i in range(all_num)]
     jaccard_dist = np.zeros_like(original_dist,dtype = np.float32)
 
     for i in range(query_num):

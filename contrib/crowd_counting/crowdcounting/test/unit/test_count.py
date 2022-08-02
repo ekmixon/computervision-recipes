@@ -8,23 +8,19 @@ from crowdcounting.api.model_crowdcount import CrowdCountModelPose, CrowdCountMo
 @pytest.fixture
 def local_root():
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    root_dir = os.path.abspath(dir_path+"/../..")
-    return root_dir
+    return os.path.abspath(f"{dir_path}/../..")
 
 @pytest.fixture
 def local_image_sparse(local_root):
-    local_image_sparse = os.path.join(local_root, "data/images/1.jpg")    
-    return local_image_sparse
+    return os.path.join(local_root, "data/images/1.jpg")
 
 @pytest.fixture
 def local_image_dense(local_root):
-    local_image_dense = os.path.join(local_root, "data/images/2.jpg")    
-    return local_image_dense
+    return os.path.join(local_root, "data/images/2.jpg")
 
 @pytest.fixture
 def mcnn_model(local_root):
-    mcnn_model_path = os.path.join(local_root, "data/models/mcnn_shtechA_660.h5")      
-    return mcnn_model_path
+    return os.path.join(local_root, "data/models/mcnn_shtechA_660.h5")
 
 def test_pose_init_gpu():
     gpu_id = 0

@@ -33,7 +33,7 @@ class GroupRandomCrop(object):
         w, h = img_group[0].size
         th, tw = self.size
 
-        out_images = list()
+        out_images = []
 
         x1 = random.randint(0, w - tw)
         y1 = random.randint(0, h - th)
@@ -53,8 +53,7 @@ class GroupCenterCrop(object):
         self.worker = torchvision.transforms.CenterCrop(size)
 
     def __call__(self, img_group):
-        cropped_imgs = [self.worker(img) for img in img_group]
-        return cropped_imgs
+        return [self.worker(img) for img in img_group]
 
 
 class GroupRandomHorizontalFlip(object):
@@ -62,8 +61,7 @@ class GroupRandomHorizontalFlip(object):
     def __call__(self, img_group):
         v = random.random()
         if v < 0.5:
-            ret = [img.transpose(Image.FLIP_LEFT_RIGHT) for img in img_group]
-            return ret
+            return [img.transpose(Image.FLIP_LEFT_RIGHT) for img in img_group]
         else:
             return img_group
 

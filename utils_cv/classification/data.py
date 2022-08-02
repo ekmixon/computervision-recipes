@@ -133,7 +133,7 @@ def is_data_multilabel(path: Union[Path, str]) -> bool:
     """
     files = Path(path).glob("*.csv")
 
-    if len([f for f in files]) == 0:
+    if not list(files):
         return False
 
     csv_file_path = Path(path) / "labels.csv"
@@ -148,7 +148,4 @@ def is_data_multilabel(path: Union[Path, str]) -> bool:
 
     labels = df["labels"].str.split(" ", n=1, expand=True)
 
-    if len(labels.columns) <= 1:
-        return False
-
-    return True
+    return len(labels.columns) > 1

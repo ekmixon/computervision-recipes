@@ -23,7 +23,7 @@ class LoadImages:  # for inference
     def __init__(self, path, img_size=(1088, 608)):
         if os.path.isdir(path):
             image_format = ['.jpg', '.jpeg', '.png', '.tif']
-            self.files = sorted(glob.glob('%s/*.*' % path))
+            self.files = sorted(glob.glob(f'{path}/*.*'))
             self.files = list(filter(lambda x: os.path.splitext(x)[1].lower() in image_format, self.files))
         elif os.path.isfile(path):
             self.files = [path]
@@ -33,7 +33,7 @@ class LoadImages:  # for inference
         self.height = img_size[1]
         self.count = 0
 
-        assert self.nF > 0, 'No images found in ' + path
+        assert self.nF > 0, f'No images found in {path}'
 
     def __iter__(self):
         self.count = -1
@@ -47,7 +47,7 @@ class LoadImages:  # for inference
 
         # Read image
         img0 = cv2.imread(img_path)  # BGR
-        assert img0 is not None, 'Failed to load ' + img_path
+        assert img0 is not None, f'Failed to load {img_path}'
 
         # Padded resize
         img, _, _, _ = letterbox(img0, height=self.height, width=self.width)
@@ -66,7 +66,7 @@ class LoadImages:  # for inference
 
         # Read image
         img0 = cv2.imread(img_path)  # BGR
-        assert img0 is not None, 'Failed to load ' + img_path
+        assert img0 is not None, f'Failed to load {img_path}'
 
         # Padded resize
         img, _, _, _ = letterbox(img0, height=self.height, width=self.width)
@@ -156,7 +156,7 @@ class LoadImagesAndLabels:  # for training
         width = self.width
         img = cv2.imread(img_path)  # BGR
         if img is None:
-            raise ValueError('File corrupt {}'.format(img_path))
+            raise ValueError(f'File corrupt {img_path}')
         augment_hsv = True
         if self.augment and augment_hsv:
             # SV augmentation by 50%
@@ -282,56 +282,54 @@ def random_affine(img, targets=None, degrees=(-10, 10), translate=(.1, .1), scal
     imw = cv2.warpPerspective(img, M, dsize=(width, height), flags=cv2.INTER_LINEAR,
                               borderValue=borderValue)  # BGR order borderValue
 
-    # Return warped points also
-    if targets is not None:
-        if len(targets) > 0:
-            n = targets.shape[0]
-            points = targets[:, 2:6].copy()
-            area0 = (points[:, 2] - points[:, 0]) * (points[:, 3] - points[:, 1])
-
-            # warp points
-            xy = np.ones((n * 4, 3))
-            xy[:, :2] = points[:, [0, 1, 2, 3, 0, 3, 2, 1]].reshape(n * 4, 2)  # x1y1, x2y2, x1y2, x2y1
-            xy = (xy @ M.T)[:, :2].reshape(n, 8)
-
-            # create new boxes
-            x = xy[:, [0, 2, 4, 6]]
-            y = xy[:, [1, 3, 5, 7]]
-            xy = np.concatenate((x.min(1), y.min(1), x.max(1), y.max(1))).reshape(4, n).T
-
-            # apply angle-based reduction
-            radians = a * math.pi / 180
-            reduction = max(abs(math.sin(radians)), abs(math.cos(radians))) ** 0.5
-            x = (xy[:, 2] + xy[:, 0]) / 2
-            y = (xy[:, 3] + xy[:, 1]) / 2
-            w = (xy[:, 2] - xy[:, 0]) * reduction
-            h = (xy[:, 3] - xy[:, 1]) * reduction
-            xy = np.concatenate((x - w / 2, y - h / 2, x + w / 2, y + h / 2)).reshape(4, n).T
-
-            # reject warped points outside of image
-            np.clip(xy[:, 0], 0, width, out=xy[:, 0])
-            np.clip(xy[:, 2], 0, width, out=xy[:, 2])
-            np.clip(xy[:, 1], 0, height, out=xy[:, 1])
-            np.clip(xy[:, 3], 0, height, out=xy[:, 3])
-            w = xy[:, 2] - xy[:, 0]
-            h = xy[:, 3] - xy[:, 1]
-            area = w * h
-            ar = np.maximum(w / (h + 1e-16), h / (w + 1e-16))
-            i = (w > 4) & (h > 4) & (area / (area0 + 1e-16) > 0.1) & (ar < 10)
-
-            targets = targets[i]
-            targets[:, 2:6] = xy[i]
-
-        return imw, targets, M
-    else:
+    if targets is None:
         return imw
+    if len(targets) > 0:
+        n = targets.shape[0]
+        points = targets[:, 2:6].copy()
+        area0 = (points[:, 2] - points[:, 0]) * (points[:, 3] - points[:, 1])
+
+        # warp points
+        xy = np.ones((n * 4, 3))
+        xy[:, :2] = points[:, [0, 1, 2, 3, 0, 3, 2, 1]].reshape(n * 4, 2)  # x1y1, x2y2, x1y2, x2y1
+        xy = (xy @ M.T)[:, :2].reshape(n, 8)
+
+        # create new boxes
+        x = xy[:, [0, 2, 4, 6]]
+        y = xy[:, [1, 3, 5, 7]]
+        xy = np.concatenate((x.min(1), y.min(1), x.max(1), y.max(1))).reshape(4, n).T
+
+        # apply angle-based reduction
+        radians = a * math.pi / 180
+        reduction = max(abs(math.sin(radians)), abs(math.cos(radians))) ** 0.5
+        x = (xy[:, 2] + xy[:, 0]) / 2
+        y = (xy[:, 3] + xy[:, 1]) / 2
+        w = (xy[:, 2] - xy[:, 0]) * reduction
+        h = (xy[:, 3] - xy[:, 1]) * reduction
+        xy = np.concatenate((x - w / 2, y - h / 2, x + w / 2, y + h / 2)).reshape(4, n).T
+
+        # reject warped points outside of image
+        np.clip(xy[:, 0], 0, width, out=xy[:, 0])
+        np.clip(xy[:, 2], 0, width, out=xy[:, 2])
+        np.clip(xy[:, 1], 0, height, out=xy[:, 1])
+        np.clip(xy[:, 3], 0, height, out=xy[:, 3])
+        w = xy[:, 2] - xy[:, 0]
+        h = xy[:, 3] - xy[:, 1]
+        area = w * h
+        ar = np.maximum(w / (h + 1e-16), h / (w + 1e-16))
+        i = (w > 4) & (h > 4) & (area / (area0 + 1e-16) > 0.1) & (ar < 10)
+
+        targets = targets[i]
+        targets[:, 2:6] = xy[i]
+
+    return imw, targets, M
 
 
 def collate_fn(batch):
     imgs, labels, paths, sizes = zip(*batch)
     batch_size = len(labels)
     imgs = torch.stack(imgs, 0)
-    max_box_len = max([l.shape[0] for l in labels])
+    max_box_len = max(l.shape[0] for l in labels)
     labels = [torch.from_numpy(l) for l in labels]
     filled_labels = torch.zeros(batch_size, max_box_len, 6)
     labels_len = torch.zeros(batch_size)
@@ -376,16 +374,13 @@ class JointDataset(LoadImagesAndLabels):  # for training
                 lb = np.loadtxt(lp)
                 if len(lb) < 1:
                     continue
-                if len(lb.shape) < 2:
-                    img_max = lb[1]
-                else:
-                    img_max = np.max(lb[:, 1])
+                img_max = lb[1] if len(lb.shape) < 2 else np.max(lb[:, 1])
                 if img_max > max_index:
                     max_index = img_max
             self.tid_num[ds] = max_index + 1
 
         last_index = 0
-        for i, (k, v) in enumerate(self.tid_num.items()):
+        for k, v in self.tid_num.items():
             self.tid_start_index[k] = last_index
             last_index += v
 

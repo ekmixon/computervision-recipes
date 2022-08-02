@@ -50,8 +50,10 @@ image_names.sort()
 
 actual_dict = {"1.jpg": 3, "2.jpg": 60, "3.jpg": 7}
 actual_counts = [
-    "Actual count: " + str(actual_dict[image_name]) for image_name in image_names
+    f"Actual count: {str(actual_dict[image_name])}"
+    for image_name in image_names
 ]
+
 
 gpu_id = -1
 mcnn_model_path = args.path  # "./data/models/mcnn_shtechA_660.h5"
@@ -115,8 +117,7 @@ def score():
     result = model.score(request.data, return_image=False, img_dim=1750)
 
     js = json.dumps({"count": int(np.round(result["pred"]))})
-    resp = Response(js, status=200, mimetype="application/json")
-    return resp
+    return Response(js, status=200, mimetype="application/json")
 
 
 @app.route("/score_alt", methods=["POST"])

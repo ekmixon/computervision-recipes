@@ -79,7 +79,7 @@ if __name__ == "__main__":
     args = parse()
 
     RG_NAME = args.name
-    VMSS_NAME = "{}-vmss".format(RG_NAME)
+    VMSS_NAME = f"{RG_NAME}-vmss"
 
     # Create resource group
     print("Creating resource group...")
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     run_script(create_vmss)
 
     if args.post_script is not None:
-        print("\nRun post-deployment script {}...".format(args.post_script))
+        print(f"\nRun post-deployment script {args.post_script}...")
         run_post_script = (
             "az vmss list-instances -g {rg} -n {vmss} --query \"[].id\" --output tsv | "
             "az vmss run-command invoke --command-id RunShellScript --scripts @{post_script} --ids @-".format(

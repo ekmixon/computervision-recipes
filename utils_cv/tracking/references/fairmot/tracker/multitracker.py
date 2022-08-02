@@ -52,16 +52,17 @@ class STrack(BaseTrack):
 
     @staticmethod
     def multi_predict(stracks):
-        if len(stracks) > 0:
-            multi_mean = np.asarray([st.mean.copy() for st in stracks])
-            multi_covariance = np.asarray([st.covariance for st in stracks])
-            for i, st in enumerate(stracks):
-                if st.state != TrackState.Tracked:
-                    multi_mean[i][7] = 0
-            multi_mean, multi_covariance = STrack.shared_kalman.multi_predict(multi_mean, multi_covariance)
-            for i, (mean, cov) in enumerate(zip(multi_mean, multi_covariance)):
-                stracks[i].mean = mean
-                stracks[i].covariance = cov
+        if len(stracks) <= 0:
+            return
+        multi_mean = np.asarray([st.mean.copy() for st in stracks])
+        multi_covariance = np.asarray([st.covariance for st in stracks])
+        for i, st in enumerate(stracks):
+            if st.state != TrackState.Tracked:
+                multi_mean[i][7] = 0
+        multi_mean, multi_covariance = STrack.shared_kalman.multi_predict(multi_mean, multi_covariance)
+        for i, (mean, cov) in enumerate(zip(multi_mean, multi_covariance)):
+            stracks[i].mean = mean
+            stracks[i].covariance = cov
 
     def activate(self, kalman_filter, frame_id):
         """Start a new tracklet"""
@@ -160,16 +161,13 @@ class STrack(BaseTrack):
         return ret
 
     def __repr__(self):
-        return 'OT_{}_({}-{})'.format(self.track_id, self.start_frame, self.end_frame)
+        return f'OT_{self.track_id}_({self.start_frame}-{self.end_frame})'
 
 
 class JDETracker(object):
     def __init__(self, opt, frame_rate=30, model=None): # EDITED
         self.opt = opt
-        if opt.gpus[0] >= 0:
-            opt.device = torch.device('cuda')
-        else:
-            opt.device = torch.device('cpu')
+        opt.device = torch.device('cuda') if opt.gpus[0] >= 0 else torch.device('cpu')
         '''
         EDITED: only create and load model if model is not None 
         '''
@@ -208,10 +206,12 @@ class JDETracker(object):
         return dets[0]
 
     def merge_outputs(self, detections):
-        results = {}
-        for j in range(1, self.opt.num_classes + 1):
-            results[j] = np.concatenate(
-                [detection[j] for detection in detections], axis=0).astype(np.float32)
+        results = {
+            j: np.concatenate(
+                [detection[j] for detection in detections], axis=0
+            ).astype(np.float32)
+            for j in range(1, self.opt.num_classes + 1)
+        }
 
         scores = np.hstack(
             [results[j][:, 4] for j in range(1, self.opt.num_classes + 1)])

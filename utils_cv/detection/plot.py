@@ -121,7 +121,7 @@ def plot_boxes(
     Returns:
         The same image with boxes and labels plotted on it
     """
-    if len(bboxes) > 0:
+    if bboxes:
         draw = ImageDraw.Draw(im)
         font = get_font(size=plot_settings.text_size)
 
@@ -309,8 +309,7 @@ def plot_detections(
 
     # Plot ground truth mask
     if data and data.mask_paths:
-        mask_path = data.mask_paths[idx]
-        if mask_path:
+        if mask_path := data.mask_paths[idx]:
             im = plot_masks(
                 im,
                 mask_path,
@@ -378,13 +377,11 @@ def plot_detections(
             ),
         )
 
-    # show image
-    if ax:
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.imshow(im)
-    else:
+    if not ax:
         return im
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.imshow(im)
 
 
 def plot_grid(
@@ -490,7 +487,7 @@ def _plot_pr_curve_iou_range(
     """ Plots the PR curve over varying iou thresholds averaging over [K]
     categories. """
     x = np.arange(0.0, 1.01, 0.01)
-    iou_thrs_idx = range(0, 10)
+    iou_thrs_idx = range(10)
     iou_thrs = np.linspace(
         0.5, 0.95, int(np.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True
     )
@@ -528,7 +525,7 @@ def _plot_pr_curve_iou_mean(
         axis=1,
     )
 
-    ax.plot(x, avg_arr, c="black", label=f"IOU=mean")
+    ax.plot(x, avg_arr, c="black", label="IOU=mean")
     ax.legend(loc="lower left")
 
 

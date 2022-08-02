@@ -275,10 +275,10 @@ def extract_masks_from_labelbox_json(
     for anno in annos:
         # get related file paths
         im_name = anno["External ID"]  # image file name
-        anno_name = im_name[:-4] + ".xml"  # annotation file name
-        mask_name = im_name[:-4] + ".png"  # mask file name
+        anno_name = f"{im_name[:-4]}.xml"
+        mask_name = f"{im_name[:-4]}.png"
 
-        print("Processing image: {}".format(im_name))
+        print(f"Processing image: {im_name}")
 
         src_im_path = src_im_dir / im_name
         src_anno_path = src_anno_dir / anno_name
@@ -328,14 +328,13 @@ def extract_masks_from_labelbox_json(
                 if non_overlap < min_overlap:
                     match = i
                     min_overlap = non_overlap
-            assert label == labels[match], "{}: {}".format(
-                label, labels[match]
-            )
+            assert label == labels[match], f"{label}: {labels[match]}"
             matches.append(match)
 
-        assert len(set(matches)) == len(matches), "{}: {}".format(
-            len(set(matches)), len(matches)
-        )
+        assert len(set(matches)) == len(
+            matches
+        ), f"{len(set(matches))}: {len(matches)}"
+
 
         binary_masks = binary_masks[matches]
 
@@ -447,9 +446,9 @@ def extract_keypoints_from_labelbox_json(
     for anno in annos:
         # get related file paths
         im_name = anno["External ID"]  # image file name
-        anno_name = im_name[:-4] + ".xml"  # annotation file name
+        anno_name = f"{im_name[:-4]}.xml"
 
-        print("Processing image: {}".format(im_name))
+        print(f"Processing image: {im_name}")
 
         src_im_path = src_im_dir / im_name
         src_anno_path = src_anno_dir / anno_name

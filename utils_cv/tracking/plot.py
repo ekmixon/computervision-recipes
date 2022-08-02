@@ -38,9 +38,7 @@ def plot_single_frame(
         results = OrderedDict(sorted(results.items()))
 
         # Assign bbox color per id
-        unique_ids = list(
-            set([bb.track_id for frame in results.values() for bb in frame])
-        )
+        unique_ids = list({bb.track_id for frame in results.values() for bb in frame})
         color_map = assign_colors(unique_ids)
 
         # Extract tracking results for wanted frame, and draw bboxes+tracking id, display frame
@@ -68,9 +66,7 @@ def play_video(
     results = OrderedDict(sorted(results.items()))
 
     # assign bbox color per id
-    unique_ids = list(
-        set([bb.track_id for frame in results.values() for bb in frame])
-    )
+    unique_ids = list({bb.track_id for frame in results.values() for bb in frame})
     color_map = assign_colors(unique_ids)
 
     # read video and initialize new tracking video
@@ -119,9 +115,7 @@ def write_video(
     )
 
     # assign bbox color per id
-    unique_ids = list(
-        set([bb.track_id for frame in results.values() for bb in frame])
-    )
+    unique_ids = list({bb.track_id for frame in results.values() for bb in frame})
     color_map = assign_colors(unique_ids)
 
     # create images and add to video writer, adapted from https://github.com/ZQPei/deep_sort_pytorch
@@ -168,13 +162,14 @@ def draw_boxes(
         cv2.rectangle(im, (left, top), (right, bottom), color, 3)
         cv2.putText(
             im,
-            "id_" + label,
+            f"id_{label}",
             (left, top + t_size[1] - 30),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
             color,
             3,
         )
+
 
     return im
 
@@ -196,6 +191,4 @@ def assign_colors(id_list: List[int],) -> Dict[int, Tuple[int, int, int]]:
         color = [int((p * ((i + 1) ** 4 - i + 1)) % 255) for p in palette]
         color_list.append(tuple(color))
 
-    color_map = dict(zip(id_list, color_list))
-
-    return color_map
+    return dict(zip(id_list, color_list))

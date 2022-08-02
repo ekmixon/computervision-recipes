@@ -23,23 +23,18 @@ def instance2xml_base(anno, download_images):
             raise Exception("Annotation has to contain a 'url' or 'coco_url' field to download the image.")
 
     E = objectify.ElementMaker(annotate=False)
-    anno_tree = E.annotation(
-        E.folder('VOC2014_instance/{}'.format(anno['category_id'])),
+    return E.annotation(
+        E.folder(f"VOC2014_instance/{anno['category_id']}"),
         E.filename(anno['file_name']),
         E.source(
             E.database('MS COCO 2014'),
             E.annotation('MS COCO 2014'),
             E.image('Flickr'),
-            E.url(anno['coco_url'])
+            E.url(anno['coco_url']),
         ),
-        E.size(
-            E.width(anno['width']),
-            E.height(anno['height']),
-            E.depth(3)
-        ),
+        E.size(E.width(anno['width']), E.height(anno['height']), E.depth(3)),
         E.segmented(0),
     )
-    return anno_tree
 
 
 def instance2xml_bbox(anno, bbox_type='xyxy'):
@@ -52,17 +47,11 @@ def instance2xml_bbox(anno, bbox_type='xyxy'):
     else:
         xmin, ymin, xmax, ymax = anno['bbox']
     E = objectify.ElementMaker(annotate=False)
-    anno_tree = E.object(
+    return E.object(
         E.name(anno['category_id']),
-        E.bndbox(
-            E.xmin(xmin),
-            E.ymin(ymin),
-            E.xmax(xmax),
-            E.ymax(ymax)
-        ),
-        E.difficult(anno['iscrowd'])
+        E.bndbox(E.xmin(xmin), E.ymin(ymin), E.xmax(xmax), E.ymax(ymax)),
+        E.difficult(anno['iscrowd']),
     )
-    return anno_tree
 
 
 def parse_instance(content, outdir, download_images = False):
@@ -96,7 +85,7 @@ def parse_instance(content, outdir, download_images = False):
 
     # merge images and annotations: id in images vs image_id in annotations
     merged_info_list = list(map(cytoolz.merge, cytoolz.join('id', content['images'], 'image_id', content['annotations'])))
-    
+
     # convert category id to name
     for instance in merged_info_list:
         assert 'category_id' in instance, f"WARNING: annotation error: image {instance['file_name']} has a rectangle without a 'category_id' field."
@@ -113,7 +102,7 @@ def parse_instance(content, outdir, download_images = False):
         # if one file have multiple different objects, save it in each category sub-directory
         filenames = []
         for group in groups:
-            filename = os.path.splitext(name)[0] + ".xml"
+            filename = f"{os.path.splitext(name)[0]}.xml"
 
             # EDITED - save all annotations in single folder, rather than separate folders for each object 
             #filenames.append(os.path.join(outdir, re.sub(" ", "_", group['category_id']), filename)) 
@@ -159,7 +148,7 @@ def keypoints2xml_object(anno, xmltree, keypoints_dict, bbox_type='xyxy'):
     etree.SubElement(bndbox, "ymax").text = str(ymax)
     etree.SubElement(key_object, "difficult").text = '0'
     keypoints = etree.SubElement(key_object, "keypoints")
-    for i in range(0, len(keypoints_dict)):
+    for i in range(len(keypoints_dict)):
         keypoint = etree.SubElement(keypoints, keypoints_dict[i+1])
         etree.SubElement(keypoint, "x").text = str(anno['keypoints'][i*3])
         etree.SubElement(keypoint, "y").text = str(anno['keypoints'][i*3+1])
@@ -176,13 +165,13 @@ def parse_keypoints(content, outdir):
         keypoint['category_id'] = "person"
     # group by filename to pool all bbox and keypoint in same file
     for name, groups in cytoolz.groupby('file_name', merged_info_list).items():
-        filename = os.path.join(outdir, os.path.splitext(name)[0]+".xml")
+        filename = os.path.join(outdir, f"{os.path.splitext(name)[0]}.xml")
         anno_tree = keypoints2xml_base(groups[0])
         for group in groups:
             anno_tree = keypoints2xml_object(group, anno_tree, keypoints, bbox_type="xyxy")
         doc = etree.ElementTree(anno_tree)
         doc.write(open(filename, "w"), pretty_print=True)
-        print("Formating keypoints xml file {} done!".format(name))
+        print(f"Formating keypoints xml file {name} done!")
 
 
 def coco2voc_main(anno_file, output_dir, anno_type, download_images = False):

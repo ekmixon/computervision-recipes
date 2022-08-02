@@ -24,11 +24,11 @@ def load_im(
     Return:
         Image
     """
-    if isinstance(im_or_path, (str, Path)):
-        im = open_image(im_or_path, convert_mode="RGB")
-    else:
-        im = im_or_path
-    return im
+    return (
+        open_image(im_or_path, convert_mode="RGB")
+        if isinstance(im_or_path, (str, Path))
+        else im_or_path
+    )
 
 
 def load_mask(
@@ -42,11 +42,11 @@ def load_mask(
     Return:
         Mask
     """
-    if isinstance(mask_or_path, (str, Path)):
-        mask = open_mask(mask_or_path)
-    else:
-        mask = mask_or_path
-    return mask
+    return (
+        open_mask(mask_or_path)
+        if isinstance(mask_or_path, (str, Path))
+        else mask_or_path
+    )
 
 
 def read_classes(path: Union[str, Path]) -> List[str]:

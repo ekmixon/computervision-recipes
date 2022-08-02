@@ -33,9 +33,7 @@ class VideoRecord(object):
 
     @property
     def num_frames(self):
-        return int(
-            len([x for x in Path(
-                self._data[0]).glob('img_*')])-1)
+        return int((len(list(Path(self._data[0]).glob('img_*'))) - 1))
 
     @property
     def label(self):
@@ -60,22 +58,25 @@ class I3DDataSet(data.Dataset):
 
     def _parse_split_files(self):
             # class labels assigned by sorting the file names in /data/hmdb51_splits directory
-            file_list = sorted(Path('./data/hmdb51_splits').glob('*'+str(self.split)+'.txt'))
-            video_list = []
-            for class_idx, f in enumerate(file_list):
-                class_name = str(f).strip().split('/')[2][:-16]
-                for line in open(f):
-                    tokens = line.strip().split(' ')
-                    video_path = self.data_root+class_name+'/'+tokens[0][:-4]
-                    record = (video_path, class_idx)
-                    # 1 indicates video should be in training set
-                    if self.train_mode & (tokens[-1] == '1'):
-                        video_list.append(VideoRecord(record))
-                    # 2 indicates video should be in test set
-                    elif (self.train_mode == False) & (tokens[-1] == '2'):
-                        video_list.append(VideoRecord(record))
-                
-            self.video_list = video_list
+        file_list = sorted(
+            Path('./data/hmdb51_splits').glob(f'*{str(self.split)}.txt')
+        )
+
+        video_list = []
+        for class_idx, f in enumerate(file_list):
+            class_name = str(f).strip().split('/')[2][:-16]
+            for line in open(f):
+                tokens = line.strip().split(' ')
+                video_path = self.data_root+class_name+'/'+tokens[0][:-4]
+                record = (video_path, class_idx)
+                # 1 indicates video should be in training set
+                if self.train_mode & (tokens[-1] == '1'):
+                    video_list.append(VideoRecord(record))
+                # 2 indicates video should be in test set
+                elif (self.train_mode == False) & (tokens[-1] == '2'):
+                    video_list.append(VideoRecord(record))
+
+        self.video_list = video_list
 
 
     def _load_image(self, directory, idx):
@@ -84,36 +85,36 @@ class I3DDataSet(data.Dataset):
             try:
                 img = Image.open(img_path).convert('RGB')
             except:
-                print("Couldn't load image:{}".format(img_path))
+                print(f"Couldn't load image:{img_path}")
                 return None
-            return img
         else:
             try:
                 img_path = os.path.join(directory, 'flow_x_{:05}.jpg'.format(idx))
                 x_img = Image.open(img_path).convert('L')
             except:
-                print("Couldn't load image:{}".format(img_path))
+                print(f"Couldn't load image:{img_path}")
                 return None
             try:
                 img_path = os.path.join(directory, 'flow_y_{:05}.jpg'.format(idx))
                 y_img = Image.open(img_path).convert('L')
             except:
-                print("Couldn't load image:{}".format(img_path))
+                print(f"Couldn't load image:{img_path}")
                 return None
             # Combine flow images into single PIL image
             x_img = np.array(x_img, dtype=np.float32)
             y_img = np.array(y_img, dtype=np.float32)
             img = np.asarray([x_img, y_img]).transpose([1, 2, 0])
             img = Image.fromarray(img.astype('uint8'))
-            return img
+
+        return img
 
 
     def _sample_indices(self, record):
         if record.num_frames > self.sample_frames:
             start_pos = randint(record.num_frames - self.sample_frames + 1)
-            indices = range(start_pos, start_pos + self.sample_frames, 1)
+            indices = range(start_pos, start_pos + self.sample_frames)
         else:
-            indices = [x for x in range(record.num_frames)]
+            indices = list(range(record.num_frames))
         if len(indices) < self.sample_frames:
             self._loop_indices(indices)
         return indices
@@ -132,7 +133,7 @@ class I3DDataSet(data.Dataset):
         if self.train_mode or self.sample_frames_at_test:
             segment_indices = self._sample_indices(record)
         else:
-            segment_indices = [i for i in range(record.num_frames)]
+            segment_indices = list(range(record.num_frames))
         # Image files are 1-indexed
         segment_indices = [i+1 for i in segment_indices]
         # Get video frame images

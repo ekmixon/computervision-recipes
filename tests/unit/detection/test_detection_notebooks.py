@@ -54,7 +54,7 @@ def test_01_notebook_run(detection_notebooks, tiny_od_data_path):
     assert len(training_aps) > 0
     for d in training_aps:
         assert isinstance(d, dict)
-    assert len(set([len(d) for d in training_aps])) == 1
+    assert len({len(d) for d in training_aps}) == 1
 
 
 @pytest.mark.gpu
@@ -78,7 +78,7 @@ def test_02_notebook_run(detection_notebooks, tiny_od_mask_data_path):
     assert len(training_aps) > 0
     for d in training_aps:
         assert isinstance(d, dict)
-    assert len(set([len(d) for d in training_aps])) == 1
+    assert len({len(d) for d in training_aps}) == 1
 
 
 @pytest.mark.gpu

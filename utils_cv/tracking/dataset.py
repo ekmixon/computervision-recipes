@@ -94,9 +94,7 @@ class TrackingDataset:
         im_paths = [
             os.path.join(self.root / self.im_dir, s) for s in self.im_filenames
         ]
-        anno_filenames = [
-            os.path.splitext(s)[0] + ".xml" for s in self.im_filenames
-        ]
+        anno_filenames = [f"{os.path.splitext(s)[0]}.xml" for s in self.im_filenames]
 
         # Read all annotations
         self.im_paths = []
@@ -117,9 +115,12 @@ class TrackingDataset:
         # Get list of all labels
         labels = []
         for anno_bboxes in self.anno_bboxes:
-            for anno_bbox in anno_bboxes:
-                if anno_bbox.label_name is not None:
-                    labels.append(anno_bbox.label_name)
+            labels.extend(
+                anno_bbox.label_name
+                for anno_bbox in anno_bboxes
+                if anno_bbox.label_name is not None
+            )
+
         self.labels = list(set(labels))
 
         # Set for each bounding box label name also what its integer representation is
@@ -147,9 +148,7 @@ class TrackingDataset:
         ):
             im_width = float(im_size[0])
             im_height = float(im_size[1])
-            fairmot_anno_path = os.path.join(
-                fairmot_annos_dir, filename[:-4] + ".txt"
-            )
+            fairmot_anno_path = os.path.join(fairmot_annos_dir, f"{filename[:-4]}.txt")
 
             with open(fairmot_anno_path, "w") as f:
                 for bbox in bboxes:
@@ -169,9 +168,7 @@ class TrackingDataset:
                     f.write(label_str)
 
         # write all image filenames into a <name>.train file required by FairMOT
-        self.fairmot_imlist_path = osp.join(
-            self.root, "{}.train".format(self.name)
-        )
+        self.fairmot_imlist_path = osp.join(self.root, f"{self.name}.train")
         with open(self.fairmot_imlist_path, "w") as f:
             for im_filename in sorted(self.im_filenames):
                 f.write(osp.join(self.im_dir, im_filename) + "\n")
@@ -233,6 +230,4 @@ def boxes_to_mot(results: Dict[int, List[TrackingBbox]]) -> None:
         for _, v in preds.items()
         for bb in v
     ]
-    bboxes_formatted = np.array(bboxes)
-
-    return bboxes_formatted
+    return np.array(bboxes)

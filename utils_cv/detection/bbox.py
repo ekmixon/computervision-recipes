@@ -105,12 +105,10 @@ bottom={self.bottom}]\
     def is_valid(self) -> bool:
         if self.left > self.right or self.top > self.bottom:
             return False
-        if (
-            min(self.rect()) < -self.MAX_VALID_DIM
-            or max(self.rect()) > self.MAX_VALID_DIM
-        ):
-            return False
-        return True
+        return (
+            min(self.rect()) >= -self.MAX_VALID_DIM
+            and max(self.rect()) <= self.MAX_VALID_DIM
+        )
 
 
 class AnnotationBbox(_Bbox):

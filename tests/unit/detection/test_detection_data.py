@@ -203,7 +203,7 @@ def test_extract_keypoints_from_labelbox_json(
     assert len([str(x) for x in keypoint_data_dir.iterdir()]) == 2
     for name, ext in subdir_exts:
         subdir = keypoint_data_dir / name
-        file_paths = [x for x in subdir.iterdir()]
+        file_paths = list(subdir.iterdir())
         assert len(file_paths) == 1
         assert subdir / f"0.{ext}" not in file_paths
         assert subdir / f"1.{ext}" in file_paths
@@ -269,7 +269,7 @@ def test_extract_masks_from_labelbox_json(labelbox_export_data, tmp_session):
         ("segmentation-masks", "png"),
     ]:
         subdir = mask_data_dir / name
-        file_paths = [x for x in subdir.iterdir()]
+        file_paths = list(subdir.iterdir())
         assert len(file_paths) == 1
         assert subdir / f"0.{ext}" not in file_paths
         assert subdir / f"1.{ext}" in file_paths

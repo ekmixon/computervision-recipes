@@ -107,8 +107,7 @@ def evaluate_helper(score, ql, qc, gl, gc, is_market1501=False):
     else:
         junk_index = junk_index2
 
-    CMC_tmp = compute_mAP(index, good_index, junk_index)
-    return CMC_tmp
+    return compute_mAP(index, good_index, junk_index)
 
 
 def compute_mAP(index, good_index, junk_index):
@@ -129,13 +128,10 @@ def compute_mAP(index, good_index, junk_index):
     rows_good = rows_good.flatten()
 
     cmc[rows_good[0] :] = 1
+    d_recall = 1.0 / ngood
     for i in range(ngood):
-        d_recall = 1.0 / ngood
         precision = (i + 1) * 1.0 / (rows_good[i] + 1)
-        if rows_good[i] != 0:
-            old_precision = i * 1.0 / rows_good[i]
-        else:
-            old_precision = 1.0
+        old_precision = i * 1.0 / rows_good[i] if rows_good[i] != 0 else 1.0
         ap = ap + d_recall * (old_precision + precision) / 2
 
     return ap, cmc

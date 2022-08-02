@@ -54,7 +54,7 @@ def model_info(model):  # Plots a line-by-line description of a PyTorch model
 
 
 def plot_one_box(x, img, color=None, label=None, line_thickness=None):  # Plots one bounding box on image img
-    tl = line_thickness or round(0.0004 * max(img.shape[0:2])) + 1  # line thickness
+    tl = line_thickness or round(0.0004 * max(img.shape[:2])) + 1
     color = color or [random.randint(0, 255) for _ in range(3)]
     c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
     cv2.rectangle(img, c1, c2, color, thickness=tl)
@@ -186,9 +186,7 @@ def compute_ap(recall, precision):
     # where X axis (recall) changes value
     i = np.where(mrec[1:] != mrec[:-1])[0]
 
-    # and sum (\Delta recall) * prec
-    ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
-    return ap
+    return np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
 
 
 def bbox_iou(box1, box2, x1y1x2y2=False):
@@ -232,7 +230,7 @@ def build_targets_max(target, anchor_wh, nA, nC, nGh, nGw):
     twh = torch.zeros(nB, nA, nGh, nGw, 2).cuda()
     tconf = torch.LongTensor(nB, nA, nGh, nGw).fill_(0).cuda()
     tcls = torch.ByteTensor(nB, nA, nGh, nGw, nC).fill_(0).cuda()  # nC = number of classes
-    tid = torch.LongTensor(nB, nA, nGh, nGw, 1).fill_(-1).cuda() 
+    tid = torch.LongTensor(nB, nA, nGh, nGw, 1).fill_(-1).cuda()
     for b in range(nB):
         t = target[b]
         t_id = t[:, 1].clone().long().cuda()
@@ -281,10 +279,9 @@ def build_targets_max(target, anchor_wh, nA, nC, nGh, nGw):
             t_id = t_id[i]
             if len(t.shape) == 1:
                 t = t.view(1, 5)
-        else:
-            if iou_best < 0.60:
-                continue
-        
+        elif iou_best < 0.60:
+            continue
+
         tc, gxy, gwh = t[:, 0].long(), t[:, 1:3].clone(), t[:, 3:5].clone()
         gxy[:, 0] = gxy[:, 0] * nGw
         gxy[:, 1] = gxy[:, 1] * nGh
@@ -316,8 +313,7 @@ def generate_anchor(nGh, nGw, anchor_wh):
     mesh = torch.stack([xx, yy], dim=0)                                              # Shape 2, nGh, nGw
     mesh = mesh.unsqueeze(0).repeat(nA,1,1,1).float()                                # Shape nA x 2 x nGh x nGw
     anchor_offset_mesh = anchor_wh.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, nGh,nGw) # Shape nA x 2 x nGh x nGw
-    anchor_mesh = torch.cat([mesh, anchor_offset_mesh], dim=1)                       # Shape nA x 4 x nGh x nGw
-    return anchor_mesh
+    return torch.cat([mesh, anchor_offset_mesh], dim=1)
 
 def encode_delta(gt_box_list, fg_anchor_list):
     px, py, pw, ph = fg_anchor_list[:, 0], fg_anchor_list[:,1], \
@@ -346,12 +342,11 @@ def decode_delta_map(delta_map, anchors):
     :param: anchors, shape (nA,4)
     '''
     nB, nA, nGh, nGw, _ = delta_map.shape
-    anchor_mesh = generate_anchor(nGh, nGw, anchors) 
+    anchor_mesh = generate_anchor(nGh, nGw, anchors)
     anchor_mesh = anchor_mesh.permute(0,2,3,1).contiguous()              # Shpae (nA x nGh x nGw) x 4
     anchor_mesh = anchor_mesh.unsqueeze(0).repeat(nB,1,1,1,1)
     pred_list = decode_delta(delta_map.view(-1,4), anchor_mesh.view(-1,4))
-    pred_map = pred_list.view(nB, nA, nGh, nGw, 4)
-    return pred_map
+    return pred_list.view(nB, nA, nGh, nGw, 4)
 
 
 def pooling_nms(heatmap, kernel=1):

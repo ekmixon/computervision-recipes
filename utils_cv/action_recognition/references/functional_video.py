@@ -6,9 +6,9 @@ import torch
 
 def _is_tensor_video_clip(clip):
     if not torch.is_tensor(clip):
-        raise TypeError("clip should be Tesnor. Got %s" % type(clip))
+        raise TypeError(f"clip should be Tesnor. Got {type(clip)}")
 
-    if not clip.ndimension() == 4:
+    if clip.ndimension() != 4:
         raise ValueError("clip should be 4D. Got %dD" % clip.dim())
 
     return True
@@ -72,10 +72,11 @@ def to_tensor(clip):
         clip (torch.tensor, dtype=torch.float): Size is (C, T, H, W)
     """
     assert _is_tensor_video_clip(clip), "clip should be a 4D torch.tensor"
-    if not clip.dtype == torch.uint8:
+    if clip.dtype != torch.uint8:
         raise TypeError(
-            "clip tensor should have data type uint8. Got %s" % str(clip.dtype)
+            f"clip tensor should have data type uint8. Got {str(clip.dtype)}"
         )
+
     return clip.float().permute(3, 0, 1, 2) / 255.0
 
 

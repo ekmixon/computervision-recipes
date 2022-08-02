@@ -59,8 +59,8 @@ class Router(CrowdCounting):
         dict_mcnn = self._model_mcnn.score(filebytes, return_image, img_dim=img_dim)
         result_mcnn = dict_mcnn["pred"]
 
-        self._logger.info("OpenPose results: {}".format(result_openpose))
-        self._logger.info("MCNN results: {}".format(result_mcnn))
+        self._logger.info(f"OpenPose results: {result_openpose}")
+        self._logger.info(f"MCNN results: {result_mcnn}")
 
         if result_openpose > self._cutoff_pose and result_mcnn > self._cutoff_mcnn:
             return dict_mcnn
@@ -102,15 +102,13 @@ class CrowdCountModelMCNN(CrowdCounting):
         image = load_jpg(filebytes, img_dim)
         t_image_prepare = round(time.time() - t, 3)
 
-        self._logger.info("time on preparing image: {} seconds".format(t_image_prepare))
+        self._logger.info(f"time on preparing image: {t_image_prepare} seconds")
         t = time.time()
         pred_mcnn, model_output = score_mcnn(self._net, image)
         t_score = round(time.time() - t, 3)
-        self._logger.info("time on scoring image: {} seconds".format(t_score))
+        self._logger.info(f"time on scoring image: {t_score} seconds")
 
-        result = {}
-        result["pred"] = int(round(pred_mcnn, 0))
-
+        result = {"pred": int(round(pred_mcnn, 0))}
         if not return_image:
             dict_time = dict(
                 zip(["t_image_prepare", "t_score"], [t_image_prepare, t_score])
@@ -119,11 +117,11 @@ class CrowdCountModelMCNN(CrowdCounting):
             t = time.time()
             scored_image = draw_image_mcnn(model_output)
             t_image_draw = round(time.time() - t, 3)
-            self._logger.info("time on drawing image: {}".format(t_image_draw))
+            self._logger.info(f"time on drawing image: {t_image_draw}")
             t = time.time()
             scored_image = web_encode_image(scored_image)
             t_image_encode = round(time.time() - t, 3)
-            self._logger.info("time on encoding image: {}".format(t_image_encode))
+            self._logger.info(f"time on encoding image: {t_image_encode}")
 
             dict_time = dict(
                 zip(
@@ -133,11 +131,9 @@ class CrowdCountModelMCNN(CrowdCounting):
             )
             result["image"] = scored_image
         # sum up total time
-        t_total = 0
-        for k in dict_time:
-            t_total += dict_time[k]
+        t_total = sum(dict_time.values())
         dict_time["t_total"] = round(t_total, 3)
-        self._logger.info("total time: {}".format(round(t_total, 3)))
+        self._logger.info(f"total time: {round(t_total, 3)}")
         result["time"] = dict_time
         self._logger.info("---finished scoring image---")
         return result
@@ -176,14 +172,12 @@ class CrowdCountModelPose(CrowdCounting):
         t = time.time()
         img = create_openpose_image(filebytes, img_dim)
         t_image_prepare = round(time.time() - t, 3)
-        self._logger.info("time on preparing image: {} seconds".format(t_image_prepare))
+        self._logger.info(f"time on preparing image: {t_image_prepare} seconds")
         t = time.time()
         humans = score_openpose(self._model, img, self._w, self._h)
         t_score = round(time.time() - t, 3)
-        self._logger.info("time on scoring image: {} seconds".format(t_score))
-        result = {}
-        result["pred"] = len(humans)
-
+        self._logger.info(f"time on scoring image: {t_score} seconds")
+        result = {"pred": len(humans)}
         if not return_image:
             dict_time = dict(
                 zip(["t_image_prepare", "t_score"], [t_image_prepare, t_score])
@@ -192,11 +186,11 @@ class CrowdCountModelPose(CrowdCounting):
             t = time.time()
             scored_image = draw_image(img, humans)
             t_image_draw = round(time.time() - t, 3)
-            self._logger.info("time on drawing image: {}".format(t_image_draw))
+            self._logger.info(f"time on drawing image: {t_image_draw}")
             t = time.time()
             scored_image = web_encode_image(scored_image)
             t_image_encode = round(time.time() - t, 3)
-            self._logger.info("time on encoding image: {}".format(t_image_encode))
+            self._logger.info(f"time on encoding image: {t_image_encode}")
 
             dict_time = dict(
                 zip(
@@ -206,11 +200,9 @@ class CrowdCountModelPose(CrowdCounting):
             )
             result["image"] = scored_image
         # sum up total time
-        t_total = 0
-        for k in dict_time:
-            t_total += dict_time[k]
+        t_total = sum(dict_time.values())
         dict_time["t_total"] = round(t_total, 3)
-        self._logger.info("total time: {}".format(round(t_total, 3)))
+        self._logger.info(f"total time: {round(t_total, 3)}")
         result["time"] = dict_time
         self._logger.info("---finished scoring image---")
         return result
@@ -233,7 +225,7 @@ def init_model(gpu_id, model, w, h, config):
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
         e = TfPoseEstimator(get_graph_path(model), target_size=(w, h), tf_config=config)
     else:
-        with tf.device("/device:GPU:{}".format(gpu_id)):
+        with tf.device(f"/device:GPU:{gpu_id}"):
             e = TfPoseEstimator(
                 get_graph_path(model), target_size=(w, h), tf_config=config
             )
@@ -283,17 +275,17 @@ def score_openpose(e, image, w, h):
         Nubmer of people in image.
     """
     resize_out_ratio = 4.0
-    humans = e.inference(
-        image, resize_to_default=(w > 0 and h > 0), upsample_size=resize_out_ratio
+    return e.inference(
+        image,
+        resize_to_default=(w > 0 and h > 0),
+        upsample_size=resize_out_ratio,
     )
-    return humans
 
 
 def draw_image(image, humans):
     image = TfPoseEstimator.draw_humans(image, humans, imgcopy=False)
     img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    imgDebug = Image.fromarray(img)
-    return imgDebug
+    return Image.fromarray(img)
 
 
 def web_encode_image(scored_image):
@@ -334,5 +326,4 @@ def score_mcnn(net, image):
 def draw_image_mcnn(model_output):
     estimated_density = model_output.data.cpu().numpy()[0, 0, :, :]
     estimated_density = np.uint8(estimated_density * 255 / estimated_density.max())
-    im = Image.fromarray(estimated_density, "L")
-    return im
+    return Image.fromarray(estimated_density, "L")

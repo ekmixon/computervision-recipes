@@ -69,11 +69,13 @@ class Evaluator(object):
         # acc
         self.acc.update(gt_ids, trk_ids, iou_distance)
 
-        if rtn_events and iou_distance.size > 0 and hasattr(self.acc, 'last_mot_events'):
-            events = self.acc.last_mot_events  # only supported by https://github.com/longcw/py-motmetrics
-        else:
-            events = None
-        return events
+        return (
+            self.acc.last_mot_events
+            if rtn_events
+            and iou_distance.size > 0
+            and hasattr(self.acc, 'last_mot_events')
+            else None
+        )
 
     def eval_file(self, filename):
         self.reset_accumulator()        
@@ -95,14 +97,9 @@ class Evaluator(object):
         metrics = copy.deepcopy(metrics)
 
         mh = mm.metrics.create()
-        summary = mh.compute_many(
-            accs,
-            metrics=metrics,
-            names=names,
-            generate_overall=True
+        return mh.compute_many(
+            accs, metrics=metrics, names=names, generate_overall=True
         )
-
-        return summary
 
     @staticmethod
     def save_summary(summary, filename):

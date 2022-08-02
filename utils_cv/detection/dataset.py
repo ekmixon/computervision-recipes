@@ -171,9 +171,10 @@ def parse_pascal_voc_anno(
             kps_annos = obj.find("keypoints")
             if kps_annos is None:
                 raise Exception(f"No keypoints found in {anno_path}")
-            assert set([kp.tag for kp in kps_annos]).issubset(
+            assert {kp.tag for kp in kps_annos}.issubset(
                 kps_labels
             ), "Incompatible keypoint labels"
+
 
             # Read keypoint coordinates: [x, y, visibility]
             # Visibility 0 means invisible, non-zero means visible
@@ -315,9 +316,7 @@ class DetectionDataset:
             im_paths = [
                 os.path.join(self.root / self.im_dir, s) for s in im_filenames
             ]
-            anno_filenames = [
-                os.path.splitext(s)[0] + ".xml" for s in im_filenames
-            ]
+            anno_filenames = [f"{os.path.splitext(s)[0]}.xml" for s in im_filenames]
 
         # Reduce number of images if max_num_images is set
         if self.max_num_images and len(anno_filenames) > self.max_num_images:
@@ -375,14 +374,13 @@ class DetectionDataset:
                 mask_path = self.root / self.mask_dir / mask_name
                 # For mask prediction, if no mask provided and negatives not
                 # allowed (), raise exception
-                if not mask_path.exists():
-                    if not self.allow_negatives:
-                        raise FileNotFoundError(mask_path)
-                    else:
-                        self.mask_paths.append(None)
-                else:
+                if mask_path.exists():
                     self.mask_paths.append(mask_path)
 
+                elif not self.allow_negatives:
+                    raise FileNotFoundError(mask_path)
+                else:
+                    self.mask_paths.append(None)
             self.anno_paths.append(anno_path)
             self.anno_bboxes.append(anno_bboxes)
         assert len(self.im_paths) == len(self.anno_paths)
@@ -391,9 +389,12 @@ class DetectionDataset:
         if not self.labels:
             labels = []
             for anno_bboxes in self.anno_bboxes:
-                for anno_bbox in anno_bboxes:
-                    if anno_bbox.label_name is not None:
-                        labels.append(anno_bbox.label_name)
+                labels.extend(
+                    anno_bbox.label_name
+                    for anno_bbox in anno_bboxes
+                    if anno_bbox.label_name is not None
+                )
+
             self.labels = list(set(labels))
 
         # Set for each bounding box label name also what its integer representation is

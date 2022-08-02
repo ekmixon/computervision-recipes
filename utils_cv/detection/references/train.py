@@ -49,8 +49,7 @@ def get_dataset(name, image_set, transform, data_path):
 
 
 def get_transform(train):
-    transforms = []
-    transforms.append(T.ToTensor())
+    transforms = [T.ToTensor()]
     if train:
         transforms.append(T.RandomHorizontalFlip(0.5))
     return T.Compose(transforms)
@@ -128,20 +127,24 @@ def main(args):
         train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq)
         lr_scheduler.step()
         if args.output_dir:
-            utils.save_on_master({
-                'model': model_without_ddp.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'lr_scheduler': lr_scheduler.state_dict(),
-                'args': args,
-                'epoch': epoch},
-                os.path.join(args.output_dir, 'model_{}.pth'.format(epoch)))
+            utils.save_on_master(
+                {
+                    'model': model_without_ddp.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'lr_scheduler': lr_scheduler.state_dict(),
+                    'args': args,
+                    'epoch': epoch,
+                },
+                os.path.join(args.output_dir, f'model_{epoch}.pth'),
+            )
+
 
         # evaluate after every epoch
         evaluate(model, data_loader_test, device=device)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print('Training time {}'.format(total_time_str))
+    print(f'Training time {total_time_str}')
 
 
 if __name__ == "__main__":

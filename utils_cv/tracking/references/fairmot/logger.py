@@ -21,23 +21,24 @@ class Logger(object):
       os.makedirs(opt.save_dir)
     if not os.path.exists(opt.debug_dir):
       os.makedirs(opt.debug_dir)
-   
+
     time_str = time.strftime('%Y-%m-%d-%H-%M')
 
-    args = dict((name, getattr(opt, name)) for name in dir(opt)
-                if not name.startswith('_'))
+    args = {
+        name: getattr(opt, name)
+        for name in dir(opt) if not name.startswith('_')
+    }
     file_name = os.path.join(opt.save_dir, 'opt.txt')
     with open(file_name, 'wt') as opt_file:
-      opt_file.write('==> torch version: {}\n'.format(torch.__version__))
-      opt_file.write('==> cudnn version: {}\n'.format(
-        torch.backends.cudnn.version()))
+      opt_file.write(f'==> torch version: {torch.__version__}\n')
+      opt_file.write(f'==> cudnn version: {torch.backends.cudnn.version()}\n')
       opt_file.write('==> Cmd:\n')
       opt_file.write(str(sys.argv))
       opt_file.write('\n==> Opt:\n')
       for k, v in sorted(args.items()):
         opt_file.write('  %s: %s\n' % (str(k), str(v)))
-          
-    log_dir = opt.save_dir + '/logs_{}'.format(time_str)
+
+    log_dir = opt.save_dir + f'/logs_{time_str}'
     if USE_TENSORBOARD:
       self.writer = tensorboardX.SummaryWriter(log_dir=log_dir)
     else:
@@ -45,9 +46,9 @@ class Logger(object):
         os.mkdir(os.path.dirname(log_dir))
       if not os.path.exists(log_dir):
         os.mkdir(log_dir)
-    self.log = open(log_dir + '/log.txt', 'w')
+    self.log = open(f'{log_dir}/log.txt', 'w')
     try:
-      os.system('cp {}/opt.txt {}/'.format(opt.save_dir, log_dir))
+      os.system(f'cp {opt.save_dir}/opt.txt {log_dir}/')
     except:
       pass
     self.start_line = True
@@ -55,9 +56,9 @@ class Logger(object):
   def write(self, txt):
     if self.start_line:
       time_str = time.strftime('%Y-%m-%d-%H-%M')
-      self.log.write('{}: {}'.format(time_str, txt))
+      self.log.write(f'{time_str}: {txt}')
     else:
-      self.log.write(txt)  
+      self.log.write(txt)
     self.start_line = False
     if '\n' in txt:
       self.start_line = True

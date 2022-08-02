@@ -153,14 +153,10 @@ class opts(object):
                              help='not regress local offset.')
 
   def parse(self, args=''):
-    if args == '':
-      opt = self.parser.parse_args()
-    else:
-      opt = self.parser.parse_args(args)
-
+    opt = self.parser.parse_args() if args == '' else self.parser.parse_args(args)
     opt.gpus_str = opt.gpus
     opt.gpus = [int(gpu) for gpu in opt.gpus.split(',')]
-    opt.gpus = [i for i in range(len(opt.gpus))] if opt.gpus[0] >=0 else [-1]
+    opt.gpus = list(range(len(opt.gpus))) if opt.gpus[0] >=0 else [-1]
     opt.lr_step = [int(i) for i in opt.lr_step.split(',')]
 
     opt.fix_res = not opt.keep_res
@@ -168,7 +164,7 @@ class opts(object):
     opt.reg_offset = not opt.not_reg_offset
 
     if opt.head_conv == -1: # init default head_conv
-      opt.head_conv = 256 if 'dla' in opt.arch else 256
+      opt.head_conv = 256
     opt.pad = 31
     opt.num_stacks = 1
 
@@ -191,10 +187,10 @@ class opts(object):
     opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id)
     opt.debug_dir = os.path.join(opt.save_dir, 'debug')
     print('The output will be saved to ', opt.save_dir)
-    
+
     if opt.resume and opt.load_model == '':
       model_path = opt.save_dir[:-4] if opt.save_dir.endswith('TEST') \
-                  else opt.save_dir
+                    else opt.save_dir
       opt.load_model = os.path.join(model_path, 'model_last.pth')
     return opt
 
@@ -214,11 +210,13 @@ class opts(object):
     opt.output_res = max(opt.output_h, opt.output_w)
 
     if opt.task == 'mot':
-      opt.heads = {'hm': opt.num_classes,
-                   'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes,
-                   'id': opt.reid_dim}
+      opt.heads = {
+          'hm': opt.num_classes,
+          'wh': 2 * opt.num_classes if opt.cat_spec_wh else 2,
+          'id': opt.reid_dim,
+      }
       if opt.reg_offset:
-        opt.heads.update({'reg': 2})
+        opt.heads['reg'] = 2
       opt.nID = dataset.nID
       opt.img_size = (1088, 608)
     else:
