@@ -1,5 +1,5 @@
 h5py==2.8.0
-flask==1.0.2
+flask==2.2.5
 scikit-image
 bokeh
 opencv-python==3.4.2.17
